@@ -1,0 +1,671 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1f2933">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Plattenarchiv</title>
+<style>
+  :root {
+    --bg: #f5f3ef; --card: #ffffff; --text: #1d1d1f; --muted: #6b6b70;
+    --line: #e1ded8; --accent: #b4532a; --accent-text: #ffffff; --danger: #b3261e;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #151517; --card: #212125; --text: #f1f1f3; --muted: #9c9ca4;
+      --line: #34343a; --accent: #e08a5c; --accent-text: #1a1008; --danger: #f2877f;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 16px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    padding-bottom: 90px;
+  }
+  header {
+    position: sticky; top: 0; z-index: 5; background: var(--bg);
+    padding: 12px 16px 8px; border-bottom: 1px solid var(--line);
+  }
+  h1 { margin: 0 0 8px; font-size: 1.25rem; }
+  input, select, textarea, button {
+    font: inherit; color: var(--text); background: var(--card);
+    border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; width: 100%;
+  }
+  button { cursor: pointer; width: auto; }
+  button.primary { background: var(--accent); color: var(--accent-text); border-color: var(--accent); font-weight: 600; }
+  button.danger { color: var(--danger); }
+  .row { display: flex; gap: 8px; align-items: center; }
+  details { margin-top: 8px; }
+  summary { cursor: pointer; color: var(--muted); padding: 4px 0; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
+  .grid .full { grid-column: 1 / -1; }
+  label { font-size: .8rem; color: var(--muted); display: block; margin-bottom: 2px; }
+  #status { padding: 8px 16px; color: var(--muted); font-size: .9rem; }
+  #liste { padding: 0 16px; display: grid; gap: 8px; }
+  .karte { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; cursor: pointer; }
+  .karte b { display: block; font-size: 1.05rem; }
+  .karte .album { margin-bottom: 2px; }
+  .karte .meta { color: var(--muted); font-size: .88rem; }
+  .leer { text-align: center; color: var(--muted); padding: 40px 16px; }
+  #neu {
+    position: fixed; right: 16px; bottom: calc(16px + env(safe-area-inset-bottom));
+    width: 56px; height: 56px; border-radius: 50%; font-size: 28px; padding: 0; line-height: 1;
+    box-shadow: 0 4px 12px rgba(0,0,0,.3);
+  }
+  dialog {
+    border: 1px solid var(--line); border-radius: 16px; background: var(--bg); color: var(--text);
+    width: min(560px, calc(100vw - 24px)); max-height: 92vh; padding: 16px;
+  }
+  dialog::backdrop { background: rgba(0,0,0,.5); }
+  dialog h2 { margin: 0 0 8px; font-size: 1.1rem; }
+  .aktionen { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
+  .aktionen .spacer { flex: 1; }
+  .hinweis { font-size: .85rem; color: var(--muted); margin: 6px 0 0; }
+  .karte.mitbild { display: flex; gap: 12px; align-items: center; }
+  .cover {
+    width: 64px; height: 64px; flex: none; border-radius: 8px; object-fit: cover; background: var(--line);
+    display: flex; align-items: center; justify-content: center; font-size: 28px;
+  }
+  #coverVorschau { flex: none; }
+  #neuScan {
+    position: fixed; right: 84px; bottom: calc(16px + env(safe-area-inset-bottom));
+    width: 56px; height: 56px; border-radius: 50%; font-size: 24px; padding: 0; line-height: 1;
+    box-shadow: 0 4px 12px rgba(0,0,0,.3);
+  }
+  #video { width: 100%; max-height: 50vh; background: #000; border-radius: 12px; object-fit: cover; }
+  #lade {
+    display: none; position: fixed; top: 0; left: 0; right: 0; z-index: 30; text-align: center;
+    background: var(--accent); color: var(--accent-text); padding: 8px 16px; font-weight: 600;
+  }
+  .karte .treffer-meta { color: var(--muted); font-size: .85rem; }
+  .toast {
+    position: fixed; left: 50%; transform: translateX(-50%); bottom: 90px; background: var(--text);
+    color: var(--bg); padding: 10px 16px; border-radius: 20px; font-size: .9rem; z-index: 20;
+    max-width: calc(100vw - 32px);
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>🎵 Plattenarchiv</h1>
+  <input id="suche" type="search" placeholder="Alles durchsuchen …" autocomplete="off">
+  <details id="filter">
+    <summary>Filter &amp; Sortierung</summary>
+    <div class="grid">
+      <div><label>Band</label><input data-f="band"></div>
+      <div><label>Album</label><input data-f="album"></div>
+      <div><label>Genre</label><select data-f="genre"></select></div>
+      <div><label>Jahr (Pressung)</label><input data-f="jahr" inputmode="numeric"></div>
+      <div><label>Erstveröff. (Album)</label><input data-f="orig_jahr" inputmode="numeric"></div>
+      <div><label>Label</label><input data-f="label"></div>
+      <div><label>Format</label><select data-f="format"></select></div>
+      <div><label>Zustand</label><select data-f="zustand"></select></div>
+      <div><label>Sortieren nach</label><select id="sortFeld"></select></div>
+      <div class="full row">
+        <button id="sortRichtung" type="button">↑ aufsteigend</button>
+        <button id="reset" type="button">Filter zurücksetzen</button>
+      </div>
+    </div>
+  </details>
+  <details>
+    <summary>Sync &amp; Export</summary>
+    <div class="aktionen">
+      <button id="syncExport" type="button">Sync-Datei exportieren</button>
+      <button id="syncImport" type="button">Sync-Datei importieren</button>
+      <button id="csvExport" type="button">CSV exportieren</button>
+    </div>
+    <p class="hinweis">Die Sync-Datei ist mit der Desktop-Version kompatibel. Beim Import gewinnt jeweils die neuere Änderung.</p>
+    <input id="dateiWahl" type="file" accept=".json,application/json" hidden>
+  </details>
+</header>
+
+<div id="status"></div>
+<main id="liste"></main>
+<button id="neu" class="primary" type="button" aria-label="Neue Platte">+</button>
+
+<dialog id="dlg">
+  <form method="dialog" id="form">
+    <h2 id="dlgTitel">Neue Platte</h2>
+    <div class="aktionen" style="margin:0 0 6px">
+      <button type="button" id="btnScan">📷 Barcode scannen</button>
+      <button type="button" id="btnOnline">🔎 Online suchen</button>
+    </div>
+    <p class="hinweis" style="margin:0 0 8px">Daten kommen aus der Datenbank MusicBrainz – bitte kurz prüfen.
+      „Online suchen“ nutzt die Felder Band und/oder Album.</p>
+    <div class="grid" id="formGrid"></div>
+    <div class="row" style="margin-top:10px">
+      <div id="coverVorschau"></div>
+      <div class="aktionen" style="margin:0">
+        <button type="button" id="coverFoto">📷 Cover-Bild wählen</button>
+        <button type="button" id="coverWeg">Entfernen</button>
+      </div>
+      <input id="coverWahl" type="file" accept="image/*" hidden>
+    </div>
+    <p class="hinweis">Beim Scannen/Online-Suchen wird das Cover automatisch geladen, falls es eins gibt.
+      Du kannst auch ein eigenes Foto machen oder aus der Galerie nehmen.</p>
+    <p class="hinweis">* Pflichtfelder: Band, Album, Genre</p>
+    <div class="aktionen">
+      <button type="button" id="loeschen" class="danger">Löschen</button>
+      <span class="spacer"></span>
+      <button type="button" id="abbrechen">Abbrechen</button>
+      <button type="submit" class="primary">Speichern</button>
+    </div>
+  </form>
+</dialog>
+<datalist id="genreListe"></datalist>
+<button id="neuScan" class="primary" type="button" aria-label="Platte scannen">📷</button>
+<div id="lade"></div>
+
+<dialog id="scanDlg">
+  <h2>Barcode scannen</h2>
+  <video id="video" playsinline muted autoplay></video>
+  <p class="hinweis" id="scanStatus"></p>
+  <div class="grid">
+    <div class="full"><label>Oder Nummer unter dem Strichcode eintippen</label>
+      <input id="codeEingabe" inputmode="numeric" placeholder="z. B. 5099902988214"></div>
+  </div>
+  <div class="aktionen">
+    <button type="button" id="codeSuchen" class="primary">Nummer suchen</button>
+    <button type="button" id="fotoBtn">Foto vom Barcode</button>
+    <span class="spacer"></span>
+    <button type="button" id="scanAbbrechen">Abbrechen</button>
+  </div>
+  <input id="fotoWahl" type="file" accept="image/*" capture="environment" hidden>
+</dialog>
+
+<dialog id="resDlg">
+  <h2>Treffer wählen</h2>
+  <div id="resListe" style="display:grid;gap:8px"></div>
+  <div class="aktionen"><span class="spacer"></span><button type="button" id="resAbbrechen">Abbrechen</button></div>
+</dialog>
+
+<script>
+const FELDER = [
+  ["band", "Band / Künstler"], ["album", "Album"], ["genre", "Genre"], ["jahr", "Jahr (Pressung)"], ["orig_jahr", "Erstveröff. (Album)"],
+  ["label", "Label"], ["format", "Format"], ["zustand", "Zustand"], ["katalognr", "Katalog-Nr."],
+  ["land", "Land"], ["preis", "Preis (€)"], ["notizen", "Notizen"]
+];
+const KEYS = FELDER.map(f => f[0]);
+const PFLICHT = ["band", "album", "genre"];
+const FORMATE = ["LP", "Doppel-LP", "EP", "Single 7\"", "Maxi 12\"", "Box-Set", "Sonstiges"];
+const ZUSTAND = ["M", "NM", "VG+", "VG", "G+", "G", "F/P"];
+const SPEICHER = "plattenarchiv-v1";
+
+let daten = laden();
+let aktuelleUid = null;
+let sortFeld = "band", rueckwaerts = false;
+let formCover = { foto: "", mbid: "" };   // Cover des gerade bearbeiteten Eintrags
+
+const $ = s => document.querySelector(s);
+const norm = s => String(s ?? "").toLocaleLowerCase("de");
+
+function laden() {
+  try { return JSON.parse(localStorage.getItem(SPEICHER) || "[]"); } catch (e) { return []; }
+}
+function speichern() {
+  try { localStorage.setItem(SPEICHER, JSON.stringify(daten)); }
+  catch (e) { toast("Speichern im Browser nicht möglich – bitte Sync-Datei exportieren!"); }
+}
+function neueUid() {
+  if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, c => {
+    const r = Math.random() * 16 | 0; return (c === "x" ? r : (r & 3 | 8)).toString(16);
+  });
+}
+// Offene Dialoge liegen über allem – Hinweise müssen deshalb in den obersten Dialog gehängt werden.
+function obersterContainer() { return [...document.querySelectorAll("dialog[open]")].pop() || document.body; }
+function toast(text) {
+  const t = document.createElement("div"); t.className = "toast"; t.textContent = text;
+  obersterContainer().appendChild(t); setTimeout(() => t.remove(), 4500);
+}
+const sichtbar = () => daten.filter(d => !d.geloescht);
+
+// ---------- Filter / Anzeige ----------
+function filterWerte() {
+  const w = {};
+  document.querySelectorAll("[data-f]").forEach(el => { if (el.value.trim()) w[el.dataset.f] = el.value.trim(); });
+  return w;
+}
+function gefiltert() {
+  const suche = norm($("#suche").value.trim());
+  const f = filterWerte();
+  return sichtbar().filter(d => {
+    if (suche && !KEYS.some(k => norm(d[k]).includes(suche))) return false;
+    for (const [k, v] of Object.entries(f)) {
+      if (["genre", "format", "zustand"].includes(k)) { if (norm(d[k]) !== norm(v)) return false; }
+      else if (!norm(d[k]).includes(norm(v))) return false;
+    }
+    return true;
+  });
+}
+function vergleich(a, b) {
+  const x = a[sortFeld] || "", y = b[sortFeld] || "";
+  if (["jahr", "orig_jahr", "preis"].includes(sortFeld)) {
+    const nx = parseFloat(String(x).replace(",", ".")), ny = parseFloat(String(y).replace(",", "."));
+    if (isNaN(nx) && isNaN(ny)) return 0; if (isNaN(nx)) return 1; if (isNaN(ny)) return -1;
+    return nx - ny;
+  }
+  return String(x).localeCompare(String(y), "de", { sensitivity: "base", numeric: true });
+}
+function render() {
+  const zeilen = gefiltert().sort(vergleich);
+  if (rueckwaerts) zeilen.reverse();
+  const liste = $("#liste"); liste.innerHTML = "";
+  if (!zeilen.length) {
+    const p = document.createElement("div"); p.className = "leer";
+    p.textContent = sichtbar().length ? "Keine Treffer für diese Filter." : "Noch keine Platten – mit + die erste anlegen.";
+    liste.appendChild(p);
+  }
+  for (const d of zeilen) {
+    const k = document.createElement("div"); k.className = "karte mitbild";
+    const meta = [d.genre, d.orig_jahr && "Orig. " + d.orig_jahr, d.jahr && "Pressung " + d.jahr,
+      d.format, d.zustand, d.label].filter(Boolean).join(" · ");
+    const band = document.createElement("b"); band.textContent = d.band;
+    const alb = document.createElement("div"); alb.className = "album"; alb.textContent = d.album;
+    const m = document.createElement("div"); m.className = "meta"; m.textContent = meta;
+    const text = document.createElement("div"); text.style.minWidth = "0"; text.append(band, alb, m);
+    k.append(coverElement(d), text);
+    k.onclick = () => oeffne(d.uid);
+    liste.appendChild(k);
+  }
+  $("#status").textContent = `${zeilen.length} von ${sichtbar().length} Platten angezeigt`;
+  auswahllistenAktualisieren();
+}
+function optionen(sel, werte, leer) {
+  const alt = sel.value; sel.innerHTML = "";
+  for (const w of ["", ...werte]) {
+    const o = document.createElement("option"); o.value = w; o.textContent = w || leer; sel.appendChild(o);
+  }
+  sel.value = werte.includes(alt) ? alt : "";
+}
+function auswahllistenAktualisieren() {
+  const genres = [...new Set(sichtbar().map(d => d.genre).filter(Boolean))].sort((a, b) => a.localeCompare(b, "de"));
+  optionen($('[data-f="genre"]'), genres, "alle");
+  const dl = $("#genreListe"); dl.innerHTML = "";
+  genres.forEach(g => { const o = document.createElement("option"); o.value = g; dl.appendChild(o); });
+}
+
+// ---------- Formular ----------
+function baueFormular() {
+  const grid = $("#formGrid");
+  for (const [k, name] of FELDER) {
+    const div = document.createElement("div");
+    if (k === "band" || k === "album" || k === "notizen") div.className = "full";
+    const lab = document.createElement("label"); lab.textContent = name + (PFLICHT.includes(k) ? " *" : "");
+    let el;
+    if (k === "format" || k === "zustand") {
+      el = document.createElement("select");
+      for (const w of ["", ...(k === "format" ? FORMATE : ZUSTAND)]) {
+        const o = document.createElement("option"); o.value = w; o.textContent = w || "–"; el.appendChild(o);
+      }
+    } else if (k === "notizen") { el = document.createElement("textarea"); el.rows = 2; }
+    else {
+      el = document.createElement("input");
+      if (k === "genre") el.setAttribute("list", "genreListe");
+      if (k === "jahr" || k === "orig_jahr") { el.inputMode = "numeric"; el.maxLength = 4; }
+      if (k === "preis") el.inputMode = "decimal";
+    }
+    el.id = "f_" + k; div.append(lab, el); grid.appendChild(div);
+  }
+}
+function oeffne(uid) {
+  aktuelleUid = uid || null;
+  const d = uid ? daten.find(x => x.uid === uid) : null;
+  $("#dlgTitel").textContent = d ? "Platte bearbeiten" : "Neue Platte";
+  KEYS.forEach(k => { $("#f_" + k).value = d ? (d[k] || "") : ""; });
+  formCover = { foto: d ? d.cover_foto || "" : "", mbid: d ? d.cover_mbid || "" : "" };
+  coverVorschau();
+  $("#loeschen").style.display = d ? "" : "none";
+  $("#dlg").showModal();
+}
+$("#form").addEventListener("submit", e => {
+  const werte = {}; KEYS.forEach(k => werte[k] = $("#f_" + k).value.trim());
+  werte.cover_foto = formCover.foto; werte.cover_mbid = formCover.mbid;
+  const fehlt = FELDER.filter(([k]) => PFLICHT.includes(k) && !werte[k]).map(f => f[1]);
+  if (fehlt.length) { e.preventDefault(); toast("Bitte ausfüllen: " + fehlt.join(", ")); return; }
+  for (const [k, name] of [["jahr", "Jahr (Pressung)"], ["orig_jahr", "Erstveröff. (Album)"]]) {
+    if (werte[k] && !/^\d{4}$/.test(werte[k])) { e.preventDefault(); toast(name + ": bitte vierstellig angeben."); return; }
+  }
+  if (!aktuelleUid && sichtbar().some(d => norm(d.band) === norm(werte.band) && norm(d.album) === norm(werte.album)) &&
+      !confirm("Diese Platte ist schon im Archiv. Trotzdem als weitere Kopie speichern?")) { e.preventDefault(); return; }
+  if (aktuelleUid) Object.assign(daten.find(x => x.uid === aktuelleUid), werte, { geaendert: Date.now() });
+  else daten.push({ uid: neueUid(), geaendert: Date.now(), geloescht: false, ...werte });
+  speichern(); render();
+});
+$("#abbrechen").onclick = () => $("#dlg").close();
+$("#loeschen").onclick = () => {
+  if (!confirm("Diesen Eintrag wirklich löschen?")) return;
+  Object.assign(daten.find(x => x.uid === aktuelleUid), { geloescht: true, geaendert: Date.now() });
+  speichern(); $("#dlg").close(); render();
+};
+$("#neu").onclick = () => oeffne(null);
+
+// ---------- Filter-Steuerung ----------
+function baueFilter() {
+  optionen($('[data-f="format"]'), FORMATE, "alle");
+  optionen($('[data-f="zustand"]'), ZUSTAND, "alle");
+  const s = $("#sortFeld");
+  FELDER.filter(f => f[0] !== "notizen").forEach(([k, n]) => {
+    const o = document.createElement("option"); o.value = k; o.textContent = n; s.appendChild(o);
+  });
+  s.onchange = () => { sortFeld = s.value; render(); };
+  $("#sortRichtung").onclick = e => {
+    rueckwaerts = !rueckwaerts; e.target.textContent = rueckwaerts ? "↓ absteigend" : "↑ aufsteigend"; render();
+  };
+}
+$("#suche").addEventListener("input", render);
+document.querySelectorAll("[data-f]").forEach(el => el.addEventListener("input", render));
+$("#reset").onclick = () => {
+  $("#suche").value = ""; document.querySelectorAll("[data-f]").forEach(el => el.value = ""); render();
+};
+
+// ---------- Sync / Export ----------
+async function dateiAusgeben(name, inhalt, typ) {
+  const blob = new Blob([inhalt], { type: typ });
+  const datei = new File([blob], name, { type: typ });
+  try {
+    if (navigator.canShare && navigator.canShare({ files: [datei] })) {
+      await navigator.share({ files: [datei], title: name }); return;
+    }
+  } catch (e) { if (e.name === "AbortError") return; }
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = name;
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+}
+$("#syncExport").onclick = () => {
+  const records = daten.map(d => ({ uid: d.uid, geaendert: d.geaendert || 0, geloescht: d.geloescht ? 1 : 0,
+    cover_mbid: d.cover_mbid || "", cover_foto: d.cover_foto || "",
+    ...Object.fromEntries(KEYS.map(k => [k, d[k] || ""])) }));
+  dateiAusgeben("plattenarchiv-sync.json",
+    JSON.stringify({ format: "plattenarchiv-sync", version: 1, records }), "application/json");
+};
+$("#syncImport").onclick = () => $("#dateiWahl").click();
+$("#dateiWahl").onchange = async e => {
+  const datei = e.target.files[0]; e.target.value = ""; if (!datei) return;
+  try {
+    const inhalt = JSON.parse(await datei.text());
+    const records = Array.isArray(inhalt) ? inhalt : inhalt.records;
+    const [neu, akt] = mergen(records);
+    toast(`Fertig: ${neu} neue, ${akt} aktualisierte Einträge.`);
+  } catch (err) { toast("Die Datei konnte nicht gelesen werden."); }
+};
+function mergen(records) {
+  let neu = 0, akt = 0;
+  const index = new Map(daten.map(d => [d.uid, d]));
+  for (const r of records) {
+    if (!r || !r.uid) continue;
+    const z = Number(r.geaendert) || 0;
+    const alt = index.get(r.uid);
+    const rec = { uid: r.uid, geaendert: z, geloescht: !!r.geloescht };
+    KEYS.forEach(k => rec[k] = String(r[k] ?? ""));
+    // Cover nur überschreiben, wenn die Sync-Datei sie überhaupt enthält (ältere Versionen kennen sie nicht)
+    for (const c of ["cover_mbid", "cover_foto"]) rec[c] = (c in r) ? String(r[c] ?? "") : ((alt && alt[c]) || "");
+    if (!alt) { daten.push(rec); index.set(rec.uid, rec); neu++; }
+    else if (z > (alt.geaendert || 0)) { Object.assign(alt, rec); akt++; }
+  }
+  speichern(); render(); return [neu, akt];
+}
+$("#csvExport").onclick = () => {
+  const esc = v => '"' + String(v ?? "").replace(/"/g, '""') + '"';
+  const zeilen = [FELDER.map(f => esc(f[1])).join(";")];
+  gefiltert().sort(vergleich).forEach(d => zeilen.push(KEYS.map(k => esc(d[k])).join(";")));
+  dateiAusgeben("plattenarchiv.csv", "﻿" + zeilen.join("\r\n"), "text/csv");
+};
+
+// ---------- Scannen & Online-Suche (MusicBrainz) ----------
+const BARCODE_FORMATE = ["ean_13", "ean_8", "upc_a", "upc_e"];
+let scanStream = null, scanTimer = null, zxReader = null, scanAktiv = false, letzterMB = 0;
+const schlafen = ms => new Promise(r => setTimeout(r, ms));
+
+// <pure>
+const lucene = s => String(s).replace(/[+\-&|!(){}\[\]^"~*?:\\\/]/g, " ").replace(/\s+/g, " ").trim();
+function titelFall(s) { return String(s || "").replace(/\b\w/g, c => c.toUpperCase()); }
+function formatAus(media) {
+  if (!media || !media.length) return "";
+  const f = media.map(m => m.format || "").join(" ");
+  const n = media.reduce((s, m) => s + (m["disc-count"] || 1), 0);
+  if (!/vinyl|shellac/i.test(f)) return "";
+  if (/7"/.test(f)) return 'Single 7"';
+  if (/10"/.test(f)) return "Sonstiges";
+  if (n >= 3) return "Box-Set";
+  if (n === 2) return "Doppel-LP";
+  return "LP";
+}
+function ausRelease(r) {
+  const li = (r["label-info"] || []).find(x => x.label || x["catalog-number"]) || {};
+  const ac = r["artist-credit"] || [];
+  return {
+    band: ac.map(a => (a.name || (a.artist && a.artist.name) || "") + (a.joinphrase || "")).join("").trim(),
+    album: r.title || "",
+    jahr: (r.date || "").slice(0, 4),
+    label: (li.label && li.label.name) || "",
+    katalognr: li["catalog-number"] || "",
+    land: r.country || "",
+    format: formatAus(r.media),
+    formatRoh: (r.media || []).map(m => m.format).filter(Boolean).join(" + "),
+    rgid: r["release-group"] && r["release-group"].id,
+    artistId: ac[0] && ac[0].artist && ac[0].artist.id,
+  };
+}
+function nimmGenre(o) {
+  const l = ((o && o.genres) || []).slice().sort((a, b) => (b.count || 0) - (a.count || 0));
+  return l.length ? titelFall(l[0].name) : "";
+}
+// </pure>
+
+function meldung(text) {
+  const b = $("#lade");
+  if (text) obersterContainer().appendChild(b);
+  b.textContent = text; b.style.display = text ? "block" : "none";
+}
+
+async function mb(pfad) {
+  const warte = 1100 - (Date.now() - letzterMB);   // MusicBrainz erlaubt ca. 1 Anfrage pro Sekunde
+  if (warte > 0) await schlafen(warte);
+  letzterMB = Date.now();
+  const r = await fetch("https://musicbrainz.org/ws/2/" + pfad + (pfad.includes("?") ? "&" : "?") + "fmt=json");
+  if (!r.ok) throw new Error("MusicBrainz antwortet mit Fehler " + r.status);
+  return r.json();
+}
+async function sucheOnline(query) {
+  const data = await mb("release/?limit=6&query=" + encodeURIComponent(query));
+  return (data.releases || []).map(ausRelease);
+}
+async function zusatzFuer(r) {
+  let genre = "", origJahr = "";
+  if (r.rgid) {
+    try {
+      const o = await mb("release-group/" + r.rgid + "?inc=genres");
+      genre = nimmGenre(o);
+      origJahr = String(o["first-release-date"] || "").slice(0, 4);   // Erstveröffentlichung des Albums
+    } catch (e) {}
+  }
+  if (!genre && r.artistId) {
+    try { genre = nimmGenre(await mb("artist/" + r.artistId + "?inc=genres")); } catch (e) {}
+  }
+  return { genre, origJahr };
+}
+function waehleTreffer(liste) {
+  return new Promise(res => {
+    const box = $("#resListe"); box.innerHTML = "";
+    let fertig = false;
+    const ende = v => { if (fertig) return; fertig = true; if ($("#resDlg").open) $("#resDlg").close(); res(v); };
+    liste.forEach(r => {
+      const k = document.createElement("div"); k.className = "karte";
+      const b = document.createElement("b"); b.textContent = r.band || "(unbekannt)";
+      const a = document.createElement("div"); a.textContent = r.album;
+      const m = document.createElement("div"); m.className = "treffer-meta";
+      m.textContent = [r.jahr, r.land, r.label, r.katalognr, r.formatRoh].filter(Boolean).join(" · ");
+      k.append(b, a, m); k.onclick = () => ende(r); box.appendChild(k);
+    });
+    $("#resAbbrechen").onclick = () => ende(null);
+    $("#resDlg").onclose = () => ende(null);
+    $("#resDlg").showModal();
+  });
+}
+async function uebernehmen(r) {
+  meldung("Genre und Erstveröffentlichung werden geholt …");
+  const z = await zusatzFuer(r);
+  r.genre = z.genre; r.orig_jahr = z.origJahr;
+  meldung("");
+  if (!$("#dlg").open) oeffne(null);
+  for (const k of ["band", "album", "genre", "jahr", "orig_jahr", "label", "katalognr", "land", "format"]) {
+    if (r[k]) $("#f_" + k).value = r[k];
+  }
+  if (r.rgid) { formCover.mbid = r.rgid; coverVorschau(); }
+  toast(r.genre ? "Daten eingetragen – bitte prüfen, Zustand und Preis ergänzen."
+                : "Daten eingetragen – Genre bitte selbst ergänzen.");
+}
+async function sucheBarcode(code) {
+  if (!/^\d{8,14}$/.test(code)) { toast("Das sieht nicht nach einem Barcode aus (8–14 Ziffern)."); return; }
+  meldung("Suche im Netz …");
+  try {
+    let liste = await sucheOnline("barcode:" + code);
+    if (!liste.length && code.length === 13 && code[0] === "0") liste = await sucheOnline("barcode:" + code.slice(1));
+    if (!liste.length && code.length === 12) liste = await sucheOnline("barcode:0" + code);
+    meldung("");
+    if (!liste.length) {
+      toast("Zu diesem Barcode nichts gefunden – trage Band/Album ein und nutze „Online suchen“.");
+      if (!$("#dlg").open) oeffne(null);
+      return;
+    }
+    const wahl = liste.length === 1 ? liste[0] : await waehleTreffer(liste);
+    if (wahl) await uebernehmen(wahl);
+    else if (!$("#dlg").open) oeffne(null);
+  } catch (e) { meldung(""); toast("Suche fehlgeschlagen: " + e.message); }
+}
+async function sucheText() {
+  const band = $("#f_band").value.trim(), album = $("#f_album").value.trim();
+  if (!band && !album) { toast("Bitte zuerst Band und/oder Album eintragen."); return; }
+  meldung("Suche im Netz …");
+  try {
+    const teile = [];
+    if (album) teile.push("release:(" + lucene(album) + ")");
+    if (band) teile.push("artist:(" + lucene(band) + ")");
+    const q = teile.join(" AND ");
+    let liste = await sucheOnline(q + " AND format:vinyl");
+    if (!liste.length) liste = await sucheOnline(q);
+    meldung("");
+    if (!liste.length) { toast("Nichts gefunden – Schreibweise prüfen oder von Hand eintragen."); return; }
+    const wahl = await waehleTreffer(liste);
+    if (wahl) await uebernehmen(wahl);
+  } catch (e) { meldung(""); toast("Suche fehlgeschlagen: " + e.message); }
+}
+
+// Kamera
+function ladeZXing() {
+  return new Promise((res, rej) => {
+    if (window.ZXing) return res();
+    const s = document.createElement("script");
+    s.src = "https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js";
+    s.onload = () => window.ZXing ? res() : rej(new Error("Scan-Bibliothek nicht verfügbar"));
+    s.onerror = () => rej(new Error("Scan-Bibliothek konnte nicht geladen werden"));
+    document.head.appendChild(s);
+  });
+}
+function scanStop() {
+  scanAktiv = false;
+  if (scanTimer) { clearInterval(scanTimer); scanTimer = null; }
+  if (zxReader) { try { zxReader.reset(); } catch (e) {} zxReader = null; }
+  if (scanStream) { scanStream.getTracks().forEach(t => t.stop()); scanStream = null; }
+  $("#video").srcObject = null;
+}
+function scanSchliessen() { scanStop(); if ($("#scanDlg").open) $("#scanDlg").close(); }
+function gefunden(code) {
+  if (!scanAktiv) return;
+  scanSchliessen();
+  sucheBarcode(String(code).replace(/\D/g, ""));
+}
+async function scanStart() {
+  $("#codeEingabe").value = "";
+  $("#scanStatus").textContent = "Kamera wird gestartet …";
+  $("#scanDlg").showModal();
+  scanAktiv = true;
+  try {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia)
+      throw new Error("Kamerazugriff ist hier nicht möglich (die Seite muss über https geöffnet sein).");
+    const v = $("#video");
+    if ("BarcodeDetector" in window) {
+      scanStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" } }, audio: false });
+      v.srcObject = scanStream; await v.play();
+      const det = new BarcodeDetector({ formats: BARCODE_FORMATE });
+      scanTimer = setInterval(async () => {
+        try { const c = await det.detect(v); if (c.length) gefunden(c[0].rawValue); } catch (e) {}
+      }, 300);
+    } else {
+      await ladeZXing();
+      zxReader = new ZXing.BrowserMultiFormatReader(undefined, 300);
+      Promise.resolve(zxReader.decodeFromVideoDevice(null, v, res => { if (res) gefunden(res.getText()); }))
+        .catch(e => { $("#scanStatus").textContent = "Kamera nicht verfügbar: " + e.message; });
+    }
+    $("#scanStatus").textContent = "Strichcode (meist auf der Rückseite der Hülle) ins Bild halten …";
+  } catch (e) {
+    $("#scanStatus").textContent = "Kamera nicht verfügbar: " + e.message +
+      " – nutze „Foto vom Barcode“ oder tippe die Nummer ein.";
+  }
+}
+async function codeAusFoto(datei) {
+  if ("BarcodeDetector" in window) {
+    const bmp = await createImageBitmap(datei);
+    const c = await new BarcodeDetector({ formats: BARCODE_FORMATE }).detect(bmp);
+    return c.length ? c[0].rawValue : "";
+  }
+  await ladeZXing();
+  const url = URL.createObjectURL(datei);
+  try { return (await new ZXing.BrowserMultiFormatReader().decodeFromImageUrl(url)).getText(); }
+  finally { URL.revokeObjectURL(url); }
+}
+$("#btnScan").onclick = scanStart;
+$("#btnOnline").onclick = sucheText;
+$("#neuScan").onclick = () => { oeffne(null); scanStart(); };
+$("#scanAbbrechen").onclick = scanSchliessen;
+$("#scanDlg").addEventListener("close", scanStop);
+$("#codeSuchen").onclick = () => {
+  const code = $("#codeEingabe").value.replace(/\D/g, "");
+  scanSchliessen(); sucheBarcode(code);
+};
+$("#fotoBtn").onclick = () => $("#fotoWahl").click();
+$("#fotoWahl").onchange = async e => {
+  const datei = e.target.files[0]; e.target.value = ""; if (!datei) return;
+  $("#scanStatus").textContent = "Foto wird ausgewertet …";
+  try {
+    const code = await codeAusFoto(datei);
+    if (code) { scanAktiv = true; gefunden(code); }
+    else $("#scanStatus").textContent = "Kein Barcode erkannt – nochmal näher/schärfer fotografieren oder Nummer eintippen.";
+  } catch (err) { $("#scanStatus").textContent = "Kein Barcode erkannt: " + err.message; }
+};
+
+// ---------- Cover ----------
+// Fremdcover kommen aus dem Cover Art Archive (anhand der MusicBrainz-ID), eigene Fotos als kleines Vorschaubild.
+const CAA = id => "https://coverartarchive.org/release-group/" + encodeURIComponent(id) + "/front-250";
+function coverElement(d) {
+  const platzhalter = () => { const p = document.createElement("div"); p.className = "cover"; p.textContent = "💿"; return p; };
+  const src = d.cover_foto || (d.cover_mbid ? CAA(d.cover_mbid) : "");
+  if (!src) return platzhalter();
+  const img = document.createElement("img");
+  img.className = "cover"; img.alt = ""; img.loading = "lazy"; img.src = src;
+  img.onerror = () => img.replaceWith(platzhalter());   // z. B. offline oder kein Cover vorhanden
+  return img;
+}
+function coverVorschau() {
+  $("#coverVorschau").replaceChildren(coverElement({ cover_foto: formCover.foto, cover_mbid: formCover.mbid }));
+}
+async function verkleinern(datei) {
+  const bmp = await createImageBitmap(datei);
+  const s = Math.min(bmp.width, bmp.height), G = 144;   // quadratischer Mittelausschnitt, klein genug zum Speichern
+  const c = document.createElement("canvas"); c.width = c.height = G;
+  c.getContext("2d").drawImage(bmp, (bmp.width - s) / 2, (bmp.height - s) / 2, s, s, 0, 0, G, G);
+  return c.toDataURL("image/jpeg", 0.65);
+}
+$("#coverFoto").onclick = () => $("#coverWahl").click();
+$("#coverWahl").onchange = async e => {
+  const f = e.target.files[0]; e.target.value = ""; if (!f) return;
+  try { formCover.foto = await verkleinern(f); coverVorschau(); }
+  catch (err) { toast("Das Bild konnte nicht verarbeitet werden."); }
+};
+$("#coverWeg").onclick = () => { formCover = { foto: "", mbid: "" }; coverVorschau(); };
+
+baueFormular(); baueFilter(); render();
+</script>
+</body>
+</html>
