@@ -244,6 +244,9 @@
     <h3>Google Drive (Handy ↔ PC)</h3>
     <div class="grid"><div class="full"><label for="driveClient">OAuth-Client-ID (Web-Anwendung)</label>
       <input id="driveClient" autocomplete="off" placeholder="1234-abc.apps.googleusercontent.com"></div></div>
+    <div class="grid"><div class="full"><label for="driveSecret">Client-Secret (Web, optional – für dauerhafte Anmeldung)</label>
+      <input id="driveSecret" type="password" autocomplete="off" placeholder="GOCSPX-…"></div></div>
+    <p class="hinweis">Mit Secret bleibt die Anmeldung dauerhaft bestehen. Trage dazu bei der Webanwendung in der Cloud-Konsole als „Autorisierte Weiterleitungs-URI“ ein:<br><b id="driveRedirect" style="user-select:all;word-break:break-all"></b></p>
     <div class="aktionen" style="margin:8px 0 0">
       <button type="button" id="driveAnmelden" class="primary">Mit Google anmelden &amp; abgleichen</button>
       <button type="button" id="driveTrennen">Trennen</button>
@@ -703,8 +706,59 @@ function ladeGIS() {
     document.head.appendChild(sc);
   });
 }
-async function driveTokenHolen() {
+const DRIVE_SECRET = "plattenarchiv-drive-secret", DRIVE_REFRESH = "plattenarchiv-drive-refresh", DRIVE_PKCE = "plattenarchiv-drive-pkce";
+const GOOGLE_AUTH = "https://accounts.google.com/o/oauth2/v2/auth", GOOGLE_TOKEN = "https://oauth2.googleapis.com/token";
+const driveSecret = () => lsGet(DRIVE_SECRET).trim();
+const driveRedirect = () => location.origin + location.pathname.replace(/index\.html$/, "");
+const b64url = buf => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+const zufall = n => b64url(crypto.getRandomValues(new Uint8Array(n)));
+const driveBereit = () => !!driveClientId() && (!!lsGet(DRIVE_REFRESH) || (!!driveToken && Date.now() < driveBis - 60000));
+async function driveWeiterleiten() {   // Anmeldung per Weiterleitung zu Google (Code-Verfahren mit PKCE)
+  const verifier = zufall(48), state = zufall(16);
+  const challenge = b64url(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(verifier)));
+  lsSet(DRIVE_PKCE, JSON.stringify({ v: verifier, s: state }));
+  location.href = GOOGLE_AUTH + "?" + new URLSearchParams({
+    client_id: driveClientId(), redirect_uri: driveRedirect(), response_type: "code", scope: DRIVE_SCOPE,
+    code_challenge: challenge, code_challenge_method: "S256", access_type: "offline", prompt: "consent", state }).toString();
+}
+async function driveTokenAnfrage(felder) {
+  const r = await fetch(GOOGLE_TOKEN, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({ client_id: driveClientId(), client_secret: driveSecret(), ...felder }).toString() });
+  let j = {}; try { j = await r.json(); } catch (e) {}
+  if (!r.ok) { const e = new Error(j.error_description || j.error || ("Fehler " + r.status)); e.code = j.error; throw e; }
+  return j;
+}
+async function driveCodeEinloesen() {   // Rückkehr von Google: ?code=… in der Adresse
+  const q = new URLSearchParams(location.search);
+  if (!q.has("code") && !q.has("error")) return false;
+  const gespeichert = (() => { try { return JSON.parse(lsGet(DRIVE_PKCE)); } catch (e) { return null; } })();
+  history.replaceState(null, "", location.pathname + location.hash); lsSet(DRIVE_PKCE, "");
+  if (q.has("error")) { driveAnzeige("fehler", "Anmeldung abgebrochen: " + q.get("error")); return false; }
+  if (!gespeichert || gespeichert.s !== q.get("state")) { driveAnzeige("fehler", "Anmeldung nicht abgeschlossen – bitte erneut versuchen."); return false; }
+  try {
+    const t = await driveTokenAnfrage({ code: q.get("code"), code_verifier: gespeichert.v, redirect_uri: driveRedirect(), grant_type: "authorization_code" });
+    if (!t.refresh_token) throw new Error("Google hat keine dauerhafte Anmeldung geliefert – bitte erneut anmelden.");
+    lsSet(DRIVE_REFRESH, t.refresh_token);
+    driveToken = t.access_token; driveBis = Date.now() + (Number(t.expires_in) || 3600) * 1000;
+    return true;
+  } catch (e) { driveAnzeige("fehler", "Anmeldung fehlgeschlagen: " + e.message); return false; }
+}
+async function driveTokenHolen(manuell) {
   if (driveToken && Date.now() < driveBis - 60000) return driveToken;
+  const rt = lsGet(DRIVE_REFRESH);
+  if (rt) {   // dauerhafte Anmeldung: neuen Zugang ohne Rückfrage holen
+    try {
+      const t = await driveTokenAnfrage({ refresh_token: rt, grant_type: "refresh_token" });
+      driveToken = t.access_token; driveBis = Date.now() + (Number(t.expires_in) || 3600) * 1000; return driveToken;
+    } catch (e) {
+      if (e.code === "invalid_grant") { lsSet(DRIVE_REFRESH, ""); throw new Error("Die Anmeldung ist abgelaufen – bitte die Wolke antippen und neu anmelden."); }
+      throw e;
+    }
+  }
+  if (driveSecret()) {
+    if (!manuell) throw new Error("Nicht angemeldet – bitte die Wolke antippen.");
+    await driveWeiterleiten(); return new Promise(() => {});   // die Seite wechselt zu Google
+  }
   await ladeGIS();
   return new Promise((res, rej) => {
     const c = google.accounts.oauth2.initTokenClient({
@@ -736,7 +790,7 @@ async function driveAbgleichen(manuell) {
   if (!driveClientId()) { if (manuell) { toast("Bitte zuerst die Client-ID eintragen."); $("#einstDlg").showModal(); } return; }
   driveLaeuft = true; driveAnzeige("laeuft", "Abgleich läuft …");
   try {
-    await driveTokenHolen();
+    await driveTokenHolen(manuell);
     const q = encodeURIComponent("name='" + DRIVE_DATEI + "' and trashed=false");
     const liste = await (await driveFetch("https://www.googleapis.com/drive/v3/files?spaces=drive&pageSize=5&orderBy=modifiedTime%20desc&fields=files(id)&q=" + q)).json();
     const fid = liste.files && liste.files[0] && liste.files[0].id;
@@ -767,23 +821,32 @@ async function driveAbgleichen(manuell) {
   } finally { driveLaeuft = false; }
 }
 function driveGeaendert() {   // nach jeder Änderung leise hochladen, solange die Anmeldung noch gilt
-  if (driveLaeuft || !driveToken || Date.now() > driveBis - 60000 || !driveClientId()) return;
+  if (driveLaeuft || !driveBereit()) return;
   clearTimeout(driveTimer); driveTimer = setTimeout(() => driveAbgleichen(false), 4000);
 }
 $("#wolke").onclick = () => driveAbgleichen(true);
 $("#driveClient").value = driveClientId();
 $("#driveClient").onchange = e => { lsSet(DRIVE_CLIENT, e.target.value.trim()); driveToken = ""; driveAnzeige(""); };
-$("#driveAnmelden").onclick = () => { lsSet(DRIVE_CLIENT, $("#driveClient").value.trim()); driveAbgleichen(true); };
+$("#driveSecret").value = driveSecret();
+$("#driveRedirect").textContent = driveRedirect();
+$("#driveSecret").onchange = e => { lsSet(DRIVE_SECRET, e.target.value.trim()); lsSet(DRIVE_REFRESH, ""); driveToken = ""; driveAnzeige(""); };
+$("#driveAnmelden").onclick = () => { lsSet(DRIVE_CLIENT, $("#driveClient").value.trim()); lsSet(DRIVE_SECRET, $("#driveSecret").value.trim()); driveAbgleichen(true); };
 $("#driveTrennen").onclick = () => {
   try { if (driveToken && window.google && google.accounts) google.accounts.oauth2.revoke(driveToken, () => {}); } catch (e) {}
-  driveToken = ""; lsSet(DRIVE_FLAG, ""); lsSet(DRIVE_ZEIT, ""); driveAnzeige("", "Getrennt. Die Daten auf diesem Gerät bleiben erhalten.");
+  const rt = lsGet(DRIVE_REFRESH);
+  if (rt) fetch("https://oauth2.googleapis.com/revoke?token=" + encodeURIComponent(rt), { method: "POST" }).catch(() => {});
+  lsSet(DRIVE_REFRESH, ""); driveToken = ""; lsSet(DRIVE_FLAG, ""); lsSet(DRIVE_ZEIT, ""); driveAnzeige("", "Getrennt. Die Daten auf diesem Gerät bleiben erhalten.");
 };
 driveAnzeige("");
 // Solange die Anmeldung gilt: beim Zurückkehren zur Seite und alle 2 Minuten automatisch abgleichen
-const driveStill = () => { if (!document.hidden && driveToken && Date.now() < driveBis - 60000 && !driveLaeuft) driveAbgleichen(false); };
+const driveStill = () => { if (!document.hidden && driveBereit() && !driveLaeuft) driveAbgleichen(false); };
 document.addEventListener("visibilitychange", driveStill);
 setInterval(driveStill, 120000);
-if (lsGet(DRIVE_FLAG) && driveClientId()) {   // beim ersten Tippen nach dem Öffnen automatisch abgleichen
+driveCodeEinloesen().then(ok => {
+  if (ok) driveAbgleichen(true);                                          // gerade angemeldet
+  else if (lsGet(DRIVE_REFRESH) && driveClientId()) setTimeout(() => driveAbgleichen(false), 600);   // dauerhaft angemeldet: sofort abgleichen
+});
+if (lsGet(DRIVE_FLAG) && driveClientId() && !lsGet(DRIVE_REFRESH) && !driveSecret()) {   // ohne Secret: beim ersten Tippen nach dem Öffnen abgleichen
   addEventListener("pointerup", e => { if (!e.target.closest("#wolke, #driveAnmelden, #driveTrennen")) driveAbgleichen(false); }, { once: true });
 }
 
