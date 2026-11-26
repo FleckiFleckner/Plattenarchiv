@@ -808,7 +808,7 @@ async function driveAbgleichen(manuell) {
     const q = encodeURIComponent("name='" + DRIVE_DATEI + "' and trashed=false");
     const liste = await (await driveFetch("https://www.googleapis.com/drive/v3/files?spaces=drive&pageSize=5&orderBy=modifiedTime%20desc&fields=files(id)&q=" + q)).json();
     const fid = liste.files && liste.files[0] && liste.files[0].id;
-    let neu = 0, akt = 0;
+    let neu = 0, akt = 0, fremdBg = null;
     if (fid) {
       let inhalt;
       try { inhalt = await (await driveFetch("https://www.googleapis.com/drive/v3/files/" + fid + "?alt=media")).json(); }
@@ -816,8 +816,10 @@ async function driveAbgleichen(manuell) {
       const records = Array.isArray(inhalt) ? inhalt : inhalt.records;
       if (!Array.isArray(records)) throw new Error("Die Datei im Drive hat ein unbekanntes Format – nichts wurde verändert.");
       [neu, akt] = mergen(records);
+      fremdBg = (!Array.isArray(inhalt) && inhalt.hintergrund && typeof inhalt.hintergrund === "object") ? inhalt.hintergrund : null;
+      bgAusDrive(fremdBg);
     }
-    const body = JSON.stringify({ format: "plattenarchiv-sync", version: 1, records: syncRecords() });
+    const body = JSON.stringify({ format: "plattenarchiv-sync", version: 1, records: syncRecords(), hintergrund: bgFuerDrive(fremdBg) });
     if (fid) await driveFetch("https://www.googleapis.com/upload/drive/v3/files/" + fid + "?uploadType=media", { method: "PATCH", headers: { "Content-Type": "application/json" }, body });
     else {
       const grenze = "plattenarchiv" + Date.now();
@@ -833,6 +835,24 @@ async function driveAbgleichen(manuell) {
     driveAnzeige("fehler", "Abgleich nicht möglich: " + e.message);
     if (manuell) toast("Abgleich nicht möglich: " + e.message);
   } finally { driveLaeuft = false; }
+}
+// Hintergrund: der zuletzt geänderte Stand gewinnt (Zeitstempel je Gerät); fehlt er lokal, bleibt der Drive-Stand unangetastet.
+function bgAusDrive(f) {
+  if (!f || typeof f.bild !== "string" || !(Number(f.geaendert) > 0)) return;
+  if (f.bild && !/^data:image\/(jpeg|png|webp);base64,/.test(f.bild)) return;
+  if (Number(f.geaendert) <= bgZeit()) return;
+  try {
+    if (f.bild) localStorage.setItem(BG_KEY, f.bild); else localStorage.removeItem(BG_KEY);
+    localStorage.setItem(BG_ZEIT, String(Number(f.geaendert)));
+  } catch (e) { return; }
+  bgAnwenden();
+}
+function bgFuerDrive(fremd) {
+  if (bgZeit() > 0 && bgZeit() >= (fremd ? Number(fremd.geaendert) || 0 : 0)) {
+    let bild = ""; try { bild = localStorage.getItem(BG_KEY) || ""; } catch (e) {}
+    return { bild, geaendert: bgZeit() };
+  }
+  return fremd || undefined;
 }
 function driveGeaendert() {   // nach jeder Änderung leise hochladen, solange die Anmeldung noch gilt
   if (driveLaeuft || !driveBereit()) return;
@@ -1393,7 +1413,8 @@ $("#coverWahl").onchange = async e => {
 $("#coverWeg").onclick = () => { formCover.foto = ""; formCover.mbid = ""; coverVorschau(); };
 
 // ---------- Hintergrund ----------
-const BG_KEY = "plattenarchiv-bg";
+const BG_KEY = "plattenarchiv-bg", BG_ZEIT = "plattenarchiv-bg-zeit";
+function bgZeit() { try { return Number(localStorage.getItem(BG_ZEIT)) || 0; } catch (e) { return 0; } }
 function bgAnwenden() {
   let src = ""; try { src = localStorage.getItem(BG_KEY) || ""; } catch (e) {}
   const bg = $("#bg");
@@ -1412,10 +1433,11 @@ $("#bgDatei").onchange = async e => {
   const f = e.target.files[0]; e.target.value = ""; if (!f) return;
   try {
     const url = await bgVerkleinern(f);
-    localStorage.setItem(BG_KEY, url); bgAnwenden(); toast("Hintergrund gesetzt.");
+    localStorage.setItem(BG_KEY, url); localStorage.setItem(BG_ZEIT, String(Date.now()));
+    bgAnwenden(); toast("Hintergrund gesetzt."); driveGeaendert();
   } catch (err) { toast("Das Bild konnte nicht gespeichert werden (zu groß oder Speicher voll)."); }
 };
-$("#bgReset").onclick = () => { try { localStorage.removeItem(BG_KEY); } catch (e) {} bgAnwenden(); };
+$("#bgReset").onclick = () => { try { localStorage.removeItem(BG_KEY); localStorage.setItem(BG_ZEIT, String(Date.now())); } catch (e) {} bgAnwenden(); driveGeaendert(); };
 
 $("#zahnrad").onclick = () => $("#einstDlg").showModal();
 $("#einstSchliessen").onclick = $("#einstX").onclick = () => $("#einstDlg").close();
