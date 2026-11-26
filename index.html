@@ -299,7 +299,7 @@
   </div>
   <div class="aktionen">
     <button type="button" id="codeSuchen" class="primary">Nummer suchen</button>
-    <button type="button" id="fotoBtn">Foto vom Barcode</button>
+    <button type="button" id="fotoBtn" class="primary">📷 Foto mit Kamera-App (beste Qualität)</button>
     <button type="button" id="lichtBtn" hidden>💡 Licht an</button>
     <span class="spacer"></span>
     <button type="button" id="scanAbbrechen">Abbrechen</button>
@@ -983,15 +983,37 @@ async function scanStart() {
   }
 }
 async function codeAusFoto(datei) {
-  if ("BarcodeDetector" in window) {
-    const bmp = await createImageBitmap(datei);
-    const c = await new BarcodeDetector({ formats: BARCODE_FORMATE }).detect(bmp);
-    return c.length ? c[0].rawValue : "";
+  // Foto der Kamera-App (hohe Auflösung): erst in Originalgröße, dann verkleinert und gedreht versuchen –
+  // sehr große Bilder erkennt der Scanner oft schlechter als mittelgroße.
+  let bmp;
+  try { bmp = await createImageBitmap(datei); }
+  catch (e) { throw new Error("Das Bildformat wird nicht unterstützt – bitte als JPEG aufnehmen."); }
+  const nativ = "BarcodeDetector" in window;
+  const det = nativ ? new BarcodeDetector({ formats: BARCODE_FORMATE }) : null;
+  if (!nativ) await ladeZXing();
+  const groessen = [0, 2000, 1400, 900];
+  for (const maxSeite of groessen) {
+    const f = maxSeite ? Math.min(1, maxSeite / Math.max(bmp.width, bmp.height)) : 1;
+    if (maxSeite && f === 1 && maxSeite !== groessen[1]) continue;
+    for (const drehen of (nativ ? [false] : [false, true])) {
+      const c = document.createElement("canvas");
+      const w = Math.round(bmp.width * f), h = Math.round(bmp.height * f);
+      c.width = drehen ? h : w; c.height = drehen ? w : h;
+      const g = c.getContext("2d"); g.fillStyle = "#fff"; g.fillRect(0, 0, c.width, c.height);
+      if (drehen) { g.translate(c.width, 0); g.rotate(Math.PI / 2); }
+      g.drawImage(bmp, 0, 0, w, h);
+      try {
+        if (nativ) { const r = await det.detect(c); if (r.length) return r[0].rawValue; }
+        else {
+          const blob = await new Promise(res => c.toBlob(res, "image/jpeg", 0.92));
+          const url = URL.createObjectURL(blob);
+          try { return (await new ZXing.BrowserMultiFormatReader().decodeFromImageUrl(url)).getText(); }
+          catch (e) {} finally { URL.revokeObjectURL(url); }
+        }
+      } catch (e) {}
+    }
   }
-  await ladeZXing();
-  const url = URL.createObjectURL(datei);
-  try { return (await new ZXing.BrowserMultiFormatReader().decodeFromImageUrl(url)).getText(); }
-  finally { URL.revokeObjectURL(url); }
+  return "";
 }
 $("#btnScan").onclick = scanStart;
 $("#btnOnline").onclick = sucheText;
@@ -1009,7 +1031,7 @@ $("#fotoWahl").onchange = async e => {
   try {
     const code = await codeAusFoto(datei);
     if (code) { scanAktiv = true; gefunden(code); }
-    else $("#scanStatus").textContent = "Kein Barcode erkannt – nochmal näher/schärfer fotografieren oder Nummer eintippen.";
+    else $("#scanStatus").textContent = "Kein Barcode erkannt – nur den Strichcode formatfüllend, scharf und gerade fotografieren, oder Nummer eintippen.";
   } catch (err) { $("#scanStatus").textContent = "Kein Barcode erkannt: " + err.message; }
 };
 
