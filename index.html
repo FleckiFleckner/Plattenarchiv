@@ -779,6 +779,10 @@ $("#driveTrennen").onclick = () => {
   driveToken = ""; lsSet(DRIVE_FLAG, ""); lsSet(DRIVE_ZEIT, ""); driveAnzeige("", "Getrennt. Die Daten auf diesem Gerät bleiben erhalten.");
 };
 driveAnzeige("");
+// Solange die Anmeldung gilt: beim Zurückkehren zur Seite und alle 2 Minuten automatisch abgleichen
+const driveStill = () => { if (!document.hidden && driveToken && Date.now() < driveBis - 60000 && !driveLaeuft) driveAbgleichen(false); };
+document.addEventListener("visibilitychange", driveStill);
+setInterval(driveStill, 120000);
 if (lsGet(DRIVE_FLAG) && driveClientId()) {   // beim ersten Tippen nach dem Öffnen automatisch abgleichen
   addEventListener("pointerup", e => { if (!e.target.closest("#wolke, #driveAnmelden, #driveTrennen")) driveAbgleichen(false); }, { once: true });
 }
