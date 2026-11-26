@@ -193,6 +193,11 @@
     <input id="bgDatei" type="file" accept="image/*" hidden>
     <div class="grid"><div class="full"><label for="discogsToken">Discogs-Token (optional, für den Marktwert per Barcode)</label>
       <input id="discogsToken" type="password" autocomplete="off" placeholder="Token einfügen"></div></div>
+    <div class="aktionen" style="margin:8px 0 0">
+      <button type="button" id="mwAlle">↻ Fehlende Marktwerte nachtragen</button>
+      <button type="button" id="mwStop" hidden>Abbrechen</button>
+    </div>
+    <p class="hinweis" id="mwStatus">Füllt nur leere Marktwert-Felder bei Platten mit Barcode. Vorhandene Werte und alle anderen Daten bleiben unverändert.</p>
     <p class="hinweis">Ohne Token nutze ich nur Discogs-Links, die MusicBrainz kennt. Mit Token suche ich bei Discogs direkt per Barcode.
       Token erzeugen: Discogs → Settings → Developers → „Generate new token“. Er bleibt nur auf diesem Gerät.</p>
   </section>
@@ -948,6 +953,35 @@ $("#mwBtn").onclick = async () => {
   if (mw.id) formCover.discogs = mw.id;
   if (mw.wert) { $("#f_marktwert").value = mw.wert; toast("Marktwert ca. " + mw.wert + " € (günstigstes Angebot, " + mw.angebote + " im Angebot)."); }
   else toast(mw.fehler);
+};
+let mwAbbruch = false;
+const warte = ms => new Promise(r => setTimeout(r, ms));
+$("#mwStop").onclick = () => { mwAbbruch = true; };
+$("#mwAlle").onclick = async () => {
+  const kandidaten = sichtbar().filter(d => !String(d.marktwert || "").trim() && String(d.barcode || "").replace(/\D/g, ""));
+  const st = $("#mwStatus");
+  if (!kandidaten.length) { st.textContent = "Nichts zu tun: Alle Platten mit Barcode haben schon einen Marktwert."; return; }
+  mwAbbruch = false; $("#mwAlle").disabled = true; $("#mwStop").hidden = false;
+  let ok = 0, nichts = 0, i = 0;
+  for (const d of kandidaten) {
+    if (mwAbbruch) break;
+    i++; st.textContent = `Marktwerte: ${i} von ${kandidaten.length} … (${ok} gefunden)`;
+    const code = String(d.barcode).replace(/\D/g, "");
+    let mw = await marktwertFuer({ discogsId: d.discogs_id, barcode: code });
+    if (!mw.wert && !mw.id) {   // über MusicBrainz die Ausgabe suchen und deren Discogs-Link nutzen
+      try {
+        let l = await sucheOnline("barcode:" + code);
+        if (!l.length && code.length === 13 && code[0] === "0") l = await sucheOnline("barcode:" + code.slice(1));
+        if (l.length) mw = await marktwertFuer({ mbid: l[0].mbid, barcode: code });
+      } catch (e) {}
+    }
+    if (mw.id && !d.discogs_id) { d.discogs_id = mw.id; d.geaendert = Date.now(); }
+    if (mw.wert) { d.marktwert = mw.wert; d.geaendert = Date.now(); ok++; } else nichts++;
+    speichern(); render();
+    await warte(1200);
+  }
+  $("#mwAlle").disabled = false; $("#mwStop").hidden = true;
+  st.textContent = (mwAbbruch ? "Abgebrochen. " : "Fertig. ") + `${ok} Marktwerte eingetragen, ${nichts} ohne Ergebnis (nicht gefunden oder aktuell nichts im Angebot).`;
 };
 $("#discogsToken").value = discogsToken();
 $("#discogsToken").addEventListener("change", e => {
