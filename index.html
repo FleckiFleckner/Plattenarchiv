@@ -921,12 +921,24 @@ function meldung(text) {
 }
 
 async function mb(pfad) {
-  const warte = 1100 - (Date.now() - letzterMB);   // MusicBrainz erlaubt ca. 1 Anfrage pro Sekunde
-  if (warte > 0) await schlafen(warte);
-  letzterMB = Date.now();
-  const r = await fetch("https://musicbrainz.org/ws/2/" + pfad + (pfad.includes("?") ? "&" : "?") + "fmt=json");
-  if (!r.ok) throw new Error("MusicBrainz antwortet mit Fehler " + r.status);
-  return r.json();
+  // MusicBrainz erlaubt ca. 1 Anfrage pro Sekunde und antwortet bei Überlastung mit 503. Dann bis zu 4 Versuche mit Wartezeit.
+  let letzter = null;
+  for (let versuch = 0; versuch < 4; versuch++) {
+    const warte = 1100 - (Date.now() - letzterMB);
+    if (warte > 0) await schlafen(warte);
+    letzterMB = Date.now();
+    let r;
+    try { r = await fetch("https://musicbrainz.org/ws/2/" + pfad + (pfad.includes("?") ? "&" : "?") + "fmt=json", { headers: { Accept: "application/json" } }); }
+    catch (e) { throw new Error("Keine Verbindung zu MusicBrainz (Internet?)"); }
+    if (r.ok) return r.json();
+    letzter = r.status;
+    if (r.status !== 503 && r.status !== 429) break;
+    const ra = Number(r.headers.get("Retry-After"));
+    await schlafen(Math.min(8000, ra > 0 ? ra * 1000 : 2500 * (versuch + 1)));
+  }
+  throw new Error(letzter === 503 || letzter === 429
+    ? "MusicBrainz ist gerade überlastet (Fehler " + letzter + ") – bitte in ein paar Minuten erneut versuchen"
+    : "MusicBrainz antwortet mit Fehler " + letzter);
 }
 async function sucheOnline(query) {
   const data = await mb("release/?limit=6&query=" + encodeURIComponent(query));
