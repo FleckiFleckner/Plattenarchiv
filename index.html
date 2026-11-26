@@ -116,6 +116,8 @@
     max-width: calc(100vw - 32px);
   }
 .meta .wert { color: #f2c14e; font-weight: 600; margin-top: 2px; }
+  .gruppe { margin: 18px 2px 8px; padding-bottom: 4px; font-size: 1.05rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #f2c14e; text-shadow: 0 1px 4px #000; border-bottom: 1px solid var(--line); }
+  .gruppe:first-child { margin-top: 4px; }
 </style>
 </head>
 <body>
@@ -347,7 +349,19 @@ function render() {
     p.textContent = sichtbar().length ? "Keine Treffer für diese Filter." : "Noch keine Platten – mit + die erste anlegen.";
     liste.appendChild(p);
   }
+  const gruppieren = !["preis", "marktwert", "notizen", "katalognr", "barcode"].includes(sortFeld);
+  let letzteGruppe = null;
   for (const d of zeilen) {
+    if (gruppieren) {
+      const roh = String(d[sortFeld] ?? "").trim();
+      const schluessel = norm(roh);
+      if (schluessel !== letzteGruppe) {
+        letzteGruppe = schluessel;
+        const h = document.createElement("div"); h.className = "gruppe";
+        h.textContent = !roh ? "(ohne Angabe)" : sortFeld === "anzahl" ? roh + "×" : roh;
+        liste.appendChild(h);
+      }
+    }
     const k = document.createElement("div"); k.className = "karte mitbild";
     const meta = [d.genre, d.orig_jahr && "Orig. " + d.orig_jahr, d.jahr && "Pressung " + d.jahr,
       d.format, d.zustand].filter(Boolean).join(" · ");
