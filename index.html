@@ -37,6 +37,9 @@
     -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
     padding: 10px 16px 8px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line);
   }
+  .badge { display: inline-block; margin-left: 6px; padding: 1px 9px; border-radius: 999px; background: var(--accent);
+    color: var(--accent-text); font-size: .72rem; font-weight: 700; vertical-align: middle; letter-spacing: .02em; }
+  #frageKnoepfe button { width: 100%; }
   .leiste, #status, #liste { max-width: 860px; margin-left: auto; margin-right: auto; }
   #bg { position: fixed; inset: 0; z-index: -2; background: #05050a center / cover no-repeat; }
   #bg svg { display: block; width: 100%; height: 100%; }
@@ -148,13 +151,17 @@
     <input id="dateiWahl" type="file" accept=".json,application/json" hidden>
   </details>
   <details>
-    <summary>Design</summary>
+    <summary>Design &amp; Einstellungen</summary>
     <div class="aktionen">
       <button id="bgWahl" type="button">Eigenes Hintergrundbild wählen</button>
       <button id="bgReset" type="button">Standard-Hintergrund</button>
     </div>
     <p class="hinweis">Zum Beispiel eine Collage mit deinen Lieblingsbands. Das Bild bleibt auf diesem Gerät.</p>
     <input id="bgDatei" type="file" accept="image/*" hidden>
+    <div class="grid"><div class="full"><label for="discogsToken">Discogs-Token (optional, für den Marktwert per Barcode)</label>
+      <input id="discogsToken" type="password" autocomplete="off" placeholder="Token einfügen"></div></div>
+    <p class="hinweis">Ohne Token nutze ich nur Discogs-Links, die MusicBrainz kennt. Mit Token suche ich bei Discogs direkt per Barcode.
+      Token erzeugen: Discogs → Settings → Developers → „Generate new token“. Er bleibt nur auf diesem Gerät.</p>
   </details>
   </div>
 </header>
@@ -173,6 +180,9 @@
     <p class="hinweis" style="margin:0 0 8px">Daten kommen aus der Datenbank MusicBrainz – bitte kurz prüfen.
       „Online suchen“ nutzt die Felder Band und/oder Album.</p>
     <div class="grid" id="formGrid"></div>
+    <div class="aktionen" style="margin:8px 0 0"><button type="button" id="mwBtn">↻ Marktwert von Discogs holen</button></div>
+    <p class="hinweis">Marktwert = günstigstes aktuelles Angebot bei Discogs (Richtwert, kein garantierter Verkaufspreis).
+      Gleiche Platte doppelt? Erhöhe die Anzahl. Limited Editions mit eigenem Barcode legst du als eigenen Eintrag an.</p>
     <div class="row" style="margin-top:10px">
       <div id="coverVorschau"></div>
       <div class="aktionen" style="margin:0">
@@ -214,6 +224,11 @@
   <input id="fotoWahl" type="file" accept="image/*" capture="environment" hidden>
 </dialog>
 
+<dialog id="frageDlg">
+  <p id="frageText" style="margin:0 0 4px; white-space: pre-line"></p>
+  <div class="aktionen" id="frageKnoepfe" style="flex-direction: column"></div>
+</dialog>
+
 <dialog id="resDlg">
   <h2>Treffer wählen</h2>
   <div id="resListe" style="display:grid;gap:8px"></div>
@@ -223,10 +238,11 @@
 <script>
 const FELDER = [
   ["band", "Band / Künstler"], ["album", "Album"], ["genre", "Genre"], ["jahr", "Jahr (Pressung)"], ["orig_jahr", "Erstveröff. (Album)"],
-  ["label", "Label"], ["format", "Format"], ["zustand", "Zustand"], ["katalognr", "Katalog-Nr."],
-  ["land", "Land"], ["preis", "Preis (€)"], ["notizen", "Notizen"]
-];
+  ["label", "Label"], ["format", "Format"], ["zustand", "Zustand"], ["katalognr", "Katalog-Nr."], ["barcode", "Barcode"],
+  ["land", "Land"], ["anzahl", "Anzahl"], ["preis", "EK-Preis (€)"], ["marktwert", "Marktwert (€, ca.)"], ["notizen", "Notizen"]
+];   // „preis“ bleibt intern der Schlüssel für den EK-Preis, damit alte Einträge und Sync-Dateien passen
 const KEYS = FELDER.map(f => f[0]);
+const EXTRA = ["cover_mbid", "cover_foto", "discogs_id"];   // werden nur mitgeführt und synchronisiert
 const PFLICHT = ["band", "album", "genre"];
 const FORMATE = ["LP", "Doppel-LP", "EP", "Single 7\"", "Maxi 12\"", "Box-Set", "Sonstiges"];
 const ZUSTAND = ["M", "NM", "VG+", "VG", "G+", "G", "F/P"];
@@ -235,7 +251,7 @@ const SPEICHER = "plattenarchiv-v1";
 let daten = laden();
 let aktuelleUid = null;
 let sortFeld = "band", rueckwaerts = false;
-let formCover = { foto: "", mbid: "" };   // Cover des gerade bearbeiteten Eintrags
+let formCover = { foto: "", mbid: "", discogs: "" };   // Cover und Discogs-ID des gerade bearbeiteten Eintrags
 
 const $ = s => document.querySelector(s);
 const norm = s => String(s ?? "").toLocaleLowerCase("de");
@@ -257,7 +273,7 @@ function neueUid() {
 function obersterContainer() { return [...document.querySelectorAll("dialog[open]")].pop() || document.body; }
 function toast(text) {
   const t = document.createElement("div"); t.className = "toast"; t.textContent = text;
-  obersterContainer().appendChild(t); setTimeout(() => t.remove(), 4500);
+  obersterContainer().appendChild(t); setTimeout(() => t.remove(), Math.max(4500, text.length * 60));
 }
 const sichtbar = () => daten.filter(d => !d.geloescht);
 
@@ -281,7 +297,7 @@ function gefiltert() {
 }
 function vergleich(a, b) {
   const x = a[sortFeld] || "", y = b[sortFeld] || "";
-  if (["jahr", "orig_jahr", "preis"].includes(sortFeld)) {
+  if (["jahr", "orig_jahr", "preis", "marktwert", "anzahl"].includes(sortFeld)) {
     const nx = parseFloat(String(x).replace(",", ".")), ny = parseFloat(String(y).replace(",", "."));
     if (isNaN(nx) && isNaN(ny)) return 0; if (isNaN(nx)) return 1; if (isNaN(ny)) return -1;
     return nx - ny;
@@ -300,8 +316,10 @@ function render() {
   for (const d of zeilen) {
     const k = document.createElement("div"); k.className = "karte mitbild";
     const meta = [d.genre, d.orig_jahr && "Orig. " + d.orig_jahr, d.jahr && "Pressung " + d.jahr,
-      d.format, d.zustand, d.label].filter(Boolean).join(" · ");
+      d.format, d.zustand, d.label, d.marktwert && "Wert ≈ " + d.marktwert + " €"].filter(Boolean).join(" · ");
     const band = document.createElement("b"); band.textContent = d.band;
+    const stueck = parseInt(d.anzahl, 10) || 1;
+    if (stueck > 1) { const bd = document.createElement("span"); bd.className = "badge"; bd.textContent = stueck + "× vorhanden"; band.append(" ", bd); }
     const alb = document.createElement("div"); alb.className = "album"; alb.textContent = d.album;
     const m = document.createElement("div"); m.className = "meta"; m.textContent = meta;
     const text = document.createElement("div"); text.style.minWidth = "0"; text.append(band, alb, m);
@@ -344,7 +362,8 @@ function baueFormular() {
       el = document.createElement("input");
       if (k === "genre") el.setAttribute("list", "genreListe");
       if (k === "jahr" || k === "orig_jahr") { el.inputMode = "numeric"; el.maxLength = 4; }
-      if (k === "preis") el.inputMode = "decimal";
+      if (k === "preis" || k === "marktwert") el.inputMode = "decimal";
+      if (k === "anzahl" || k === "barcode") el.inputMode = "numeric";
     }
     el.id = "f_" + k; div.append(lab, el); grid.appendChild(div);
   }
@@ -354,24 +373,82 @@ function oeffne(uid) {
   const d = uid ? daten.find(x => x.uid === uid) : null;
   $("#dlgTitel").textContent = d ? "Platte bearbeiten" : "Neue Platte";
   KEYS.forEach(k => { $("#f_" + k).value = d ? (d[k] || "") : ""; });
-  formCover = { foto: d ? d.cover_foto || "" : "", mbid: d ? d.cover_mbid || "" : "" };
+  if (!d) $("#f_anzahl").value = "1";
+  formCover = { foto: d ? d.cover_foto || "" : "", mbid: d ? d.cover_mbid || "" : "", discogs: d ? d.discogs_id || "" : "" };
   coverVorschau();
   $("#loeschen").style.display = d ? "" : "none";
   $("#dlg").showModal();
 }
-$("#form").addEventListener("submit", e => {
-  const werte = {}; KEYS.forEach(k => werte[k] = $("#f_" + k).value.trim());
-  werte.cover_foto = formCover.foto; werte.cover_mbid = formCover.mbid;
-  const fehlt = FELDER.filter(([k]) => PFLICHT.includes(k) && !werte[k]).map(f => f[1]);
-  if (fehlt.length) { e.preventDefault(); toast("Bitte ausfüllen: " + fehlt.join(", ")); return; }
-  for (const [k, name] of [["jahr", "Jahr (Pressung)"], ["orig_jahr", "Erstveröff. (Album)"]]) {
-    if (werte[k] && !/^\d{4}$/.test(werte[k])) { e.preventDefault(); toast(name + ": bitte vierstellig angeben."); return; }
+// ---------- Doppelte erkennen ----------
+// Barcodes vergleichen ohne führende Nullen (UPC-12 und EAN-13 desselben Codes sind gleich).
+const ziffern = x => String(x || "").replace(/\D/g, "").replace(/^0+/, "");
+const beschreibe = d => d.band + " – " + d.album +
+  ([d.label, d.jahr, d.format].filter(Boolean).length ? " (" + [d.label, d.jahr, d.format].filter(Boolean).join(", ") + ")" : "");
+// "gleich": gleicher Barcode = dieselbe Ausgabe. "moeglich": gleiche Band + Album, Ausgabe unklar.
+// Zwei verschiedene Barcodes gelten als verschiedene Ausgaben (z. B. Limited Edition) und werden getrennt geführt.
+function findeVorhanden(w) {
+  const bc = ziffern(w.barcode), liste = sichtbar();
+  if (bc) { const g = liste.find(d => ziffern(d.barcode) === bc); if (g) return { art: "gleich", eintrag: g }; }
+  if (w.band && w.album) {
+    const m = liste.find(d => norm(d.band) === norm(w.band) && norm(d.album) === norm(w.album) &&
+                              !(bc && ziffern(d.barcode) && ziffern(d.barcode) !== bc));
+    if (m) return { art: "moeglich", eintrag: m };
   }
-  if (!aktuelleUid && sichtbar().some(d => norm(d.band) === norm(werte.band) && norm(d.album) === norm(werte.album)) &&
-      !confirm("Diese Platte ist schon im Archiv. Trotzdem als weitere Kopie speichern?")) { e.preventDefault(); return; }
-  if (aktuelleUid) Object.assign(daten.find(x => x.uid === aktuelleUid), werte, { geaendert: Date.now() });
-  else daten.push({ uid: neueUid(), geaendert: Date.now(), geloescht: false, ...werte });
-  speichern(); render();
+  return null;
+}
+function doppeltVermerken(eintrag, neu) {
+  const n = (parseInt(eintrag.anzahl, 10) || 1) + 1;
+  eintrag.anzahl = String(n);
+  if (neu) {   // fehlende Angaben des vorhandenen Eintrags ergänzen, nichts überschreiben
+    for (const k of ["barcode", "marktwert", "katalognr", "label", "jahr", "orig_jahr", "land", "format", "discogs_id"])
+      if (!eintrag[k] && neu[k]) eintrag[k] = neu[k];
+  }
+  eintrag.geaendert = Date.now(); speichern(); render();
+  return n;
+}
+function frage(text, knoepfe) {   // Auswahl-Dialog; liefert den Index des Knopfs, -1 bei Abbruch
+  return new Promise(res => {
+    const dlg = $("#frageDlg"), box = $("#frageKnoepfe"); $("#frageText").textContent = text; box.innerHTML = "";
+    let fertig = false;
+    const ende = v => { if (fertig) return; fertig = true; if (dlg.open) dlg.close(); res(v); };
+    knoepfe.forEach((t, i) => {
+      const b = document.createElement("button"); b.type = "button"; b.textContent = t;
+      if (i === 0) b.className = "primary"; b.onclick = () => ende(i); box.appendChild(b);
+    });
+    dlg.onclose = () => ende(-1);
+    dlg.showModal();
+  });
+}
+$("#form").addEventListener("submit", async e => {
+  e.preventDefault();
+  const werte = {}; KEYS.forEach(k => werte[k] = $("#f_" + k).value.trim());
+  werte.cover_foto = formCover.foto; werte.cover_mbid = formCover.mbid; werte.discogs_id = formCover.discogs;
+  const fehlt = FELDER.filter(([k]) => PFLICHT.includes(k) && !werte[k]).map(f => f[1]);
+  if (fehlt.length) { toast("Bitte ausfüllen: " + fehlt.join(", ")); return; }
+  for (const [k, name] of [["jahr", "Jahr (Pressung)"], ["orig_jahr", "Erstveröff. (Album)"]]) {
+    if (werte[k] && !/^\d{4}$/.test(werte[k])) { toast(name + ": bitte vierstellig angeben."); return; }
+  }
+  if (werte.anzahl && !/^[1-9]\d*$/.test(werte.anzahl)) { toast("Anzahl: bitte eine ganze Zahl ab 1 angeben."); return; }
+  if (!werte.anzahl) werte.anzahl = "1";
+  if (!aktuelleUid) {
+    const v = findeVorhanden(werte);
+    if (v) {
+      const n = parseInt(v.eintrag.anzahl, 10) || 1;
+      const gleich = v.art === "gleich";
+      const wahl = await frage(gleich
+        ? "Diese Platte (gleicher Barcode) ist schon im Archiv:\n" + beschreibe(v.eintrag) + "\nAnzahl bisher: " + n
+        : "Von dieser Platte gibt es schon einen Eintrag:\n" + beschreibe(v.eintrag) + "\nIst das dieselbe Ausgabe?",
+        gleich ? ["Doppelt vermerken", "Trotzdem als eigene Platte speichern", "Abbrechen"]
+               : ["Ja, doppelt vermerken", "Nein, andere Ausgabe (separat speichern)", "Abbrechen"]);
+      if (wahl === 0) {
+        const m = doppeltVermerken(v.eintrag, werte);
+        $("#dlg").close(); toast("Doppelt vermerkt: jetzt " + m + "× vorhanden."); return;
+      }
+      if (wahl !== 1) return;
+    }
+    daten.push({ uid: neueUid(), geaendert: Date.now(), geloescht: false, ...werte });
+  } else Object.assign(daten.find(x => x.uid === aktuelleUid), werte, { geaendert: Date.now() });
+  speichern(); render(); $("#dlg").close();
 });
 $("#abbrechen").onclick = () => $("#dlg").close();
 $("#loeschen").onclick = () => {
@@ -414,8 +491,7 @@ async function dateiAusgeben(name, inhalt, typ) {
 }
 $("#syncExport").onclick = () => {
   const records = daten.map(d => ({ uid: d.uid, geaendert: d.geaendert || 0, geloescht: d.geloescht ? 1 : 0,
-    cover_mbid: d.cover_mbid || "", cover_foto: d.cover_foto || "",
-    ...Object.fromEntries(KEYS.map(k => [k, d[k] || ""])) }));
+    ...Object.fromEntries([...KEYS, ...EXTRA].map(k => [k, d[k] || ""])) }));
   dateiAusgeben("plattenarchiv-sync.json",
     JSON.stringify({ format: "plattenarchiv-sync", version: 1, records }), "application/json");
 };
@@ -437,9 +513,8 @@ function mergen(records) {
     const z = Number(r.geaendert) || 0;
     const alt = index.get(r.uid);
     const rec = { uid: r.uid, geaendert: z, geloescht: !!r.geloescht };
-    KEYS.forEach(k => rec[k] = String(r[k] ?? ""));
-    // Cover nur überschreiben, wenn die Sync-Datei sie überhaupt enthält (ältere Versionen kennen sie nicht)
-    for (const c of ["cover_mbid", "cover_foto"]) rec[c] = (c in r) ? String(r[c] ?? "") : ((alt && alt[c]) || "");
+    // Felder, die die Sync-Datei nicht kennt (ältere Version), bleiben unverändert – es geht nichts verloren
+    for (const k of [...KEYS, ...EXTRA]) rec[k] = (k in r) ? String(r[k] ?? "") : ((alt && alt[k]) || "");
     if (!alt) { daten.push(rec); index.set(rec.uid, rec); neu++; }
     else if (z > (alt.geaendert || 0)) { Object.assign(alt, rec); akt++; }
   }
@@ -483,6 +558,8 @@ function ausRelease(r) {
     land: r.country || "",
     format: formatAus(r.media),
     formatRoh: (r.media || []).map(m => m.format).filter(Boolean).join(" + "),
+    mbid: r.id || "",
+    barcode: r.barcode || "",
     rgid: r["release-group"] && r["release-group"].id,
     artistId: ac[0] && ac[0].artist && ac[0].artist.id,
   };
@@ -491,6 +568,14 @@ function nimmGenre(o) {
   const l = ((o && o.genres) || []).slice().sort((a, b) => (b.count || 0) - (a.count || 0));
   return l.length ? titelFall(l[0].name) : "";
 }
+function discogsIdAusRelations(relations) {   // Discogs-Release-ID aus den Verknüpfungen eines MusicBrainz-Release
+  for (const rel of (relations || [])) {
+    const m = String((rel.url && rel.url.resource) || "").match(/discogs\.com\/(?:[a-z]{2}\/)?release\/(\d+)/i);
+    if (m) return m[1];
+  }
+  return "";
+}
+const eur = n => Number(n).toFixed(2).replace(".", ",");
 // </pure>
 
 function meldung(text) {
@@ -543,21 +628,78 @@ function waehleTreffer(liste) {
     $("#resDlg").showModal();
   });
 }
-async function uebernehmen(r) {
+// ---------- Marktwert (Discogs) ----------
+// Richtwert = günstigstes aktuelles Angebot bei Discogs in Euro, kein Verkaufspreis.
+// Weg: MusicBrainz kennt oft den Discogs-Link der Ausgabe; sonst Suche per Barcode (braucht einen Discogs-Token).
+const DISCOGS_KEY = "plattenarchiv-discogs";
+function discogsToken() { try { return localStorage.getItem(DISCOGS_KEY) || ""; } catch (e) { return ""; } }
+async function discogsIdAusMB(mbid) {
+  if (!mbid) return "";
+  try { return discogsIdAusRelations((await mb("release/" + mbid + "?inc=url-rels")).relations); } catch (e) { return ""; }
+}
+async function discogsIdAusBarcode(code) {
+  const t = discogsToken(); if (!t || !code) return "";
+  const r = await fetch("https://api.discogs.com/database/search?type=release&per_page=5&barcode=" +
+    encodeURIComponent(code) + "&token=" + encodeURIComponent(t));
+  if (!r.ok) throw new Error("Discogs-Suche: Fehler " + r.status);
+  const d = await r.json();
+  return (d.results && d.results[0] && String(d.results[0].id)) || "";
+}
+async function discogsPreis(id) {
+  const t = discogsToken();
+  const r = await fetch("https://api.discogs.com/marketplace/stats/" + encodeURIComponent(id) + "?curr_abbr=EUR" +
+    (t ? "&token=" + encodeURIComponent(t) : ""));
+  if (!r.ok) throw new Error("Discogs: Fehler " + r.status);
+  return r.json();
+}
+async function marktwertFuer({ discogsId, mbid, barcode }) {
+  try {
+    let id = discogsId || await discogsIdAusMB(mbid);
+    if (!id && barcode) id = await discogsIdAusBarcode(barcode);
+    if (!id) return { fehler: discogsToken()
+      ? "Keine passende Discogs-Ausgabe gefunden – Marktwert bitte selbst eintragen."
+      : "Kein Discogs-Link gefunden. Mit einem Discogs-Token (unter „Design & Einstellungen“) suche ich per Barcode." };
+    const d = await discogsPreis(id), lp = d && d.lowest_price;
+    if (!lp || lp.value == null) return { id, fehler: "Bei Discogs ist gerade nichts im Angebot – Marktwert bitte selbst eintragen." };
+    if (lp.currency && lp.currency !== "EUR") return { id, fehler: "Discogs liefert Preise in " + lp.currency + " – bitte selbst eintragen." };
+    return { id, wert: eur(lp.value), angebote: d.num_for_sale || 0 };
+  } catch (e) { return { fehler: "Marktwert nicht abrufbar: " + e.message }; }
+}
+async function uebernehmen(r, code) {
   meldung("Genre und Erstveröffentlichung werden geholt …");
   const z = await zusatzFuer(r);
   r.genre = z.genre; r.orig_jahr = z.origJahr;
+  meldung("Marktwert wird geholt …");
+  const mw = await marktwertFuer({ mbid: r.mbid, barcode: code || r.barcode });
   meldung("");
   if (!$("#dlg").open) oeffne(null);
   for (const k of ["band", "album", "genre", "jahr", "orig_jahr", "label", "katalognr", "land", "format"]) {
     if (r[k]) $("#f_" + k).value = r[k];
   }
-  if (r.rgid) { formCover.mbid = r.rgid; coverVorschau(); }
-  toast(r.genre ? "Daten eingetragen – bitte prüfen, Zustand und Preis ergänzen."
-                : "Daten eingetragen – Genre bitte selbst ergänzen.");
+  const bc = code || r.barcode;
+  if (bc && !$("#f_barcode").value) $("#f_barcode").value = bc;
+  if (r.rgid) formCover.mbid = r.rgid;
+  if (mw.id) formCover.discogs = mw.id;
+  if (mw.wert) $("#f_marktwert").value = mw.wert;
+  coverVorschau();
+  toast((r.genre ? "Daten eingetragen – bitte prüfen, Zustand und EK-Preis ergänzen." : "Daten eingetragen – Genre bitte selbst ergänzen.") +
+    (mw.wert ? " Marktwert ca. " + mw.wert + " €." : " " + mw.fehler));
 }
 async function sucheBarcode(code) {
   if (!/^\d{8,14}$/.test(code)) { toast("Das sieht nicht nach einem Barcode aus (8–14 Ziffern)."); return; }
+  // Schon im Archiv? Gleicher Barcode = dieselbe Ausgabe → Hinweis und Anzahl erhöhen.
+  const v = findeVorhanden({ barcode: code });
+  if (v) {
+    const n = parseInt(v.eintrag.anzahl, 10) || 1;
+    const wahl = await frage("Diese Platte ist schon im Archiv:\n" + beschreibe(v.eintrag) + "\nAnzahl bisher: " + n,
+      ["Doppelt vermerken", "Andere Ausgabe, trotzdem neu anlegen", "Abbrechen"]);
+    if (wahl === 0) {
+      const m = doppeltVermerken(v.eintrag);
+      if ($("#dlg").open) $("#dlg").close();
+      toast("Doppelt vermerkt: " + beschreibe(v.eintrag) + " ist jetzt " + m + "× vorhanden."); return;
+    }
+    if (wahl !== 1) return;
+  }
   meldung("Suche im Netz …");
   try {
     let liste = await sucheOnline("barcode:" + code);
@@ -567,10 +709,11 @@ async function sucheBarcode(code) {
     if (!liste.length) {
       toast("Zu diesem Barcode nichts gefunden – trage Band/Album ein und nutze „Online suchen“.");
       if (!$("#dlg").open) oeffne(null);
+      $("#f_barcode").value = code;   // der gescannte Code bleibt gespeichert, damit Doppelte später erkannt werden
       return;
     }
     const wahl = liste.length === 1 ? liste[0] : await waehleTreffer(liste);
-    if (wahl) await uebernehmen(wahl);
+    if (wahl) await uebernehmen(wahl, code);
     else if (!$("#dlg").open) oeffne(null);
   } catch (e) { meldung(""); toast("Suche fehlgeschlagen: " + e.message); }
 }
@@ -735,7 +878,7 @@ $("#coverWahl").onchange = async e => {
   try { formCover.foto = await verkleinern(f); coverVorschau(); }
   catch (err) { toast("Das Bild konnte nicht verarbeitet werden."); }
 };
-$("#coverWeg").onclick = () => { formCover = { foto: "", mbid: "" }; coverVorschau(); };
+$("#coverWeg").onclick = () => { formCover.foto = ""; formCover.mbid = ""; coverVorschau(); };
 
 // ---------- Hintergrund ----------
 const BG_KEY = "plattenarchiv-bg";
@@ -761,6 +904,20 @@ $("#bgDatei").onchange = async e => {
   } catch (err) { toast("Das Bild konnte nicht gespeichert werden (zu groß oder Speicher voll)."); }
 };
 $("#bgReset").onclick = () => { try { localStorage.removeItem(BG_KEY); } catch (e) {} bgAnwenden(); };
+
+$("#mwBtn").onclick = async () => {
+  meldung("Marktwert wird geholt …");
+  const mw = await marktwertFuer({ discogsId: formCover.discogs, barcode: $("#f_barcode").value.replace(/\D/g, "") });
+  meldung("");
+  if (mw.id) formCover.discogs = mw.id;
+  if (mw.wert) { $("#f_marktwert").value = mw.wert; toast("Marktwert ca. " + mw.wert + " € (günstigstes Angebot, " + mw.angebote + " im Angebot)."); }
+  else toast(mw.fehler);
+};
+$("#discogsToken").value = discogsToken();
+$("#discogsToken").addEventListener("change", e => {
+  try { const t = e.target.value.trim(); if (t) localStorage.setItem(DISCOGS_KEY, t); else localStorage.removeItem(DISCOGS_KEY); toast(t ? "Token gespeichert." : "Token entfernt."); }
+  catch (err) { toast("Token konnte nicht gespeichert werden."); }
+});
 
 baueFormular(); baueFilter(); render(); bgAnwenden();
 </script>
