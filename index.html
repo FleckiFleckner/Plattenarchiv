@@ -115,6 +115,7 @@
     color: var(--bg); padding: 10px 16px; border-radius: 20px; font-size: .9rem; z-index: 20;
     max-width: calc(100vw - 32px);
   }
+.meta .wert { color: #f2c14e; font-weight: 600; margin-top: 2px; }
 </style>
 </head>
 <body>
@@ -344,12 +345,13 @@ function render() {
   for (const d of zeilen) {
     const k = document.createElement("div"); k.className = "karte mitbild";
     const meta = [d.genre, d.orig_jahr && "Orig. " + d.orig_jahr, d.jahr && "Pressung " + d.jahr,
-      d.format, d.zustand, d.label, d.marktwert && "Wert ≈ " + d.marktwert + " €"].filter(Boolean).join(" · ");
+      d.format, d.zustand].filter(Boolean).join(" · ");
     const band = document.createElement("b"); band.textContent = d.band;
     const stueck = parseInt(d.anzahl, 10) || 1;
     if (stueck > 1) { const bd = document.createElement("span"); bd.className = "badge"; bd.textContent = stueck + "× vorhanden"; band.append(" ", bd); }
     const alb = document.createElement("div"); alb.className = "album"; alb.textContent = d.album;
     const m = document.createElement("div"); m.className = "meta"; m.textContent = meta;
+    if (d.marktwert) { const w = document.createElement("div"); w.className = "wert"; w.textContent = "Marktwert ≈ " + d.marktwert + " €"; m.append(w); }
     const text = document.createElement("div"); text.style.minWidth = "0"; text.append(band, alb, m);
     k.append(coverElement(d), text);
     k.onclick = () => oeffne(d.uid);
