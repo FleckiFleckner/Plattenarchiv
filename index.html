@@ -576,8 +576,8 @@ $("#form").addEventListener("submit", async e => {
   speichern(); render(); $("#dlg").close();
 });
 $("#abbrechen").onclick = () => $("#dlg").close();
-$("#loeschen").onclick = () => {
-  if (!confirm("Diesen Eintrag wirklich löschen?")) return;
+$("#loeschen").onclick = async () => {
+  if (await frage("Diesen Eintrag wirklich löschen?", ["Löschen", "Abbrechen"]) !== 0) return;
   Object.assign(daten.find(x => x.uid === aktuelleUid), { geloescht: true, geaendert: Date.now() });
   speichern(); $("#dlg").close(); render();
 };
@@ -921,35 +921,62 @@ function scanStop() {
 function scanSchliessen() { scanStop(); if ($("#scanDlg").open) $("#scanDlg").close(); }
 function gefunden(code) {
   if (!scanAktiv) return;
+  const nummer = String(code).replace(/\D/g, "");
   scanSchliessen();
-  sucheBarcode(String(code).replace(/\D/g, ""));
+  toast("Code erkannt: " + nummer);
+  sucheBarcode(nummer);
+}
+async function zxStarten() {
+  const v = $("#video");
+  await ladeZXing();
+  zxReader = new ZXing.BrowserMultiFormatReader(undefined, 300);
+  Promise.resolve(zxReader.decodeFromVideoDevice(null, v, res => { if (res) gefunden(res.getText()); }))
+    .catch(e => { $("#scanStatus").textContent = "Kamera nicht verfügbar: " + e.message; });
+  setTimeout(() => { if (scanAktiv) lichtVorbereiten(); }, 1500);
 }
 async function scanStart() {
   $("#codeEingabe").value = "";
   $("#scanStatus").textContent = "Kamera wird gestartet …";
   $("#scanDlg").showModal();
   scanAktiv = true;
+  const hinweisNach = setTimeout(() => {
+    if (scanAktiv) $("#scanStatus").textContent = "Noch kein Code erkannt – Strichcode ruhig, nah und gut beleuchtet halten (Licht an), oder „Foto vom Barcode“ bzw. Nummer eintippen.";
+  }, 12000);
+  $("#scanDlg").addEventListener("close", () => clearTimeout(hinweisNach), { once: true });
   try {
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia)
       throw new Error("Kamerazugriff ist hier nicht möglich (die Seite muss über https geöffnet sein).");
     const v = $("#video");
-    if ("BarcodeDetector" in window) {
+    let formate = BARCODE_FORMATE;
+    if ("BarcodeDetector" in window && BarcodeDetector.getSupportedFormats) {
+      try { const ok = await BarcodeDetector.getSupportedFormats(); formate = BARCODE_FORMATE.filter(f => ok.includes(f)); } catch (e) {}
+    }
+    if ("BarcodeDetector" in window && formate.length) {
       scanStream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: { ideal: "environment" }, width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: false });
       v.srcObject = scanStream; await v.play();
-      const det = new BarcodeDetector({ formats: BARCODE_FORMATE });
+      const det = new BarcodeDetector({ formats: formate });
+      let fehler = 0;
       scanTimer = setInterval(async () => {
-        try { const c = await det.detect(v); if (c.length) gefunden(c[0].rawValue); } catch (e) {}
+        if (!scanAktiv || v.readyState < 2) return;
+        try { const c = await det.detect(v); fehler = 0; if (c.length) gefunden(c[0].rawValue); }
+        catch (e) {
+          if (++fehler === 5 && scanAktiv) {   // Erkennung des Geräts funktioniert nicht → andere Methode nutzen
+            clearInterval(scanTimer); scanTimer = null;
+            if (scanStream) { scanStream.getTracks().forEach(t => t.stop()); scanStream = null; }
+            v.srcObject = null;
+            $("#scanStatus").textContent = "Wechsle auf andere Scan-Methode …";
+            zxStarten().then(() => { if (scanAktiv) $("#scanStatus").textContent = "Strichcode (meist auf der Rückseite der Hülle) ins Bild halten …"; })
+              .catch(err => { $("#scanStatus").textContent = "Scan nicht möglich: " + err.message + " – nutze „Foto vom Barcode“ oder tippe die Nummer ein."; });
+          }
+        }
       }, 300);
+      $("#scanStatus").textContent = "Strichcode (meist auf der Rückseite der Hülle) ins Bild halten …";
+      lichtVorbereiten();
     } else {
-      await ladeZXing();
-      zxReader = new ZXing.BrowserMultiFormatReader(undefined, 300);
-      Promise.resolve(zxReader.decodeFromVideoDevice(null, v, res => { if (res) gefunden(res.getText()); }))
-        .catch(e => { $("#scanStatus").textContent = "Kamera nicht verfügbar: " + e.message; });
+      await zxStarten();
+      $("#scanStatus").textContent = "Strichcode (meist auf der Rückseite der Hülle) ins Bild halten …";
     }
-    $("#scanStatus").textContent = "Strichcode (meist auf der Rückseite der Hülle) ins Bild halten …";
-    // Bei der ZXing-Variante steht der Kamerastrom erst etwas später bereit
-    if (scanStream) lichtVorbereiten(); else setTimeout(() => { if (scanAktiv) lichtVorbereiten(); }, 1500);
   } catch (e) {
     $("#scanStatus").textContent = "Kamera nicht verfügbar: " + e.message +
       " – nutze „Foto vom Barcode“ oder tippe die Nummer ein.";
