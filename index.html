@@ -118,6 +118,13 @@
 .meta .wert { color: #f2c14e; font-weight: 600; margin-top: 2px; }
   .gruppe { margin: 18px 2px 8px; padding-bottom: 4px; font-size: 1.05rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #f2c14e; text-shadow: 0 1px 4px #000; border-bottom: 1px solid var(--line); }
   .gruppe:first-child { margin-top: 4px; }
+  #ansichtWechsel { font-size: 1.2rem; padding-left: 14px; padding-right: 14px; }
+  #liste.raster { grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 10px; }
+  #liste.raster .gruppe { grid-column: 1 / -1; }
+  #liste.raster .karte { display: block; position: relative; padding: 0; overflow: hidden; aspect-ratio: 1; }
+  #liste.raster .karte .cover { width: 100%; height: 100%; border-radius: 0; }
+  #liste.raster .karte div.cover { font-size: .8rem; line-height: 1.25; text-align: center; padding: 6px; overflow: hidden; flex-direction: column; word-break: break-word; }
+  #liste.raster .badge { position: absolute; top: 4px; right: 4px; font-size: .75rem; }
 </style>
 </head>
 <body>
@@ -165,6 +172,7 @@
   <div class="sortsteuerung">
     <select id="sortFeld"></select>
     <button id="sortRichtung" type="button">↑ aufsteigend</button>
+      <button id="ansichtWechsel" type="button" aria-label="Ansicht wechseln" title="Ansicht wechseln">▦</button>
   </div>
 </div>
 <main id="liste"></main>
@@ -287,6 +295,9 @@ const SPEICHER = "plattenarchiv-v1";
 let daten = laden();
 let aktuelleUid = null;
 let sortFeld = "band", rueckwaerts = false;
+const ANSICHT_KEY = "plattenarchiv-ansicht";
+let raster = false;
+try { raster = localStorage.getItem(ANSICHT_KEY) === "raster"; } catch (e) {}
 let formCover = { foto: "", mbid: "", discogs: "" };   // Cover und Discogs-ID des gerade bearbeiteten Eintrags
 
 const $ = s => document.querySelector(s);
@@ -343,7 +354,7 @@ function vergleich(a, b) {
 function render() {
   const zeilen = gefiltert().sort(vergleich);
   if (rueckwaerts) zeilen.reverse();
-  const liste = $("#liste"); liste.innerHTML = "";
+  const liste = $("#liste"); liste.innerHTML = ""; liste.classList.toggle("raster", raster);
   if (!zeilen.length) {
     const p = document.createElement("div"); p.className = "leer";
     p.textContent = sichtbar().length ? "Keine Treffer für diese Filter." : "Noch keine Platten – mit + die erste anlegen.";
@@ -372,7 +383,11 @@ function render() {
     const m = document.createElement("div"); m.className = "meta"; m.textContent = meta;
     if (d.marktwert) { const w = document.createElement("div"); w.className = "wert"; w.textContent = "Marktwert ≈ " + d.marktwert + " €"; m.append(w); }
     const text = document.createElement("div"); text.style.minWidth = "0"; text.append(band, alb, m);
-    k.append(coverElement(d), text);
+    if (raster) {
+      k.title = d.band + " – " + d.album;
+      k.append(coverElement(d));
+      if (stueck > 1) { const bd = document.createElement("span"); bd.className = "badge"; bd.textContent = stueck + "×"; k.append(bd); }
+    } else k.append(coverElement(d), text);
     k.onclick = () => oeffne(d.uid);
     liste.appendChild(k);
   }
@@ -516,6 +531,14 @@ function baueFilter() {
     const o = document.createElement("option"); o.value = k; o.textContent = n; s.appendChild(o);
   });
   s.onchange = () => { sortFeld = s.value; render(); };
+  const aw = $("#ansichtWechsel");
+  const ansichtZeigen = () => { aw.textContent = raster ? "☰" : "▦"; aw.title = aw.ariaLabel = raster ? "Zur Listenansicht" : "Zur Bilderansicht"; };
+  ansichtZeigen();
+  aw.onclick = () => {
+    raster = !raster; ansichtZeigen();
+    try { localStorage.setItem(ANSICHT_KEY, raster ? "raster" : "liste"); } catch (e) {}
+    render();
+  };
   $("#sortRichtung").onclick = e => {
     rueckwaerts = !rueckwaerts; e.target.textContent = rueckwaerts ? "↓ absteigend" : "↑ aufsteigend"; render();
   };
@@ -903,7 +926,12 @@ $("#fotoWahl").onchange = async e => {
 // Fremdcover kommen aus dem Cover Art Archive (anhand der MusicBrainz-ID), eigene Fotos als kleines Vorschaubild.
 const CAA = id => "https://coverartarchive.org/release-group/" + encodeURIComponent(id) + "/front-250";
 function coverElement(d) {
-  const platzhalter = () => { const p = document.createElement("div"); p.className = "cover"; p.textContent = "💿"; return p; };
+  const platzhalter = () => {
+    const p = document.createElement("div"); p.className = "cover";
+    if (raster && (d.band || d.album)) { const b = document.createElement("b"); b.textContent = d.band || ""; const a = document.createElement("span"); a.textContent = d.album || ""; p.append(b, a); }
+    else p.textContent = "💿";
+    return p;
+  };
   const src = d.cover_foto || (d.cover_mbid ? CAA(d.cover_mbid) : "");
   if (!src) return platzhalter();
   const img = document.createElement("img");
