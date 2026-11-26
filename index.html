@@ -125,6 +125,36 @@
   #liste.raster .karte .cover { width: 100%; height: 100%; border-radius: 0; }
   #liste.raster .karte div.cover { font-size: .8rem; line-height: 1.25; text-align: center; padding: 6px; overflow: hidden; flex-direction: column; word-break: break-word; }
   #liste.raster .badge { position: absolute; top: 4px; right: 4px; font-size: .75rem; }
+
+  /* ===== Design „Kompakt“ ===== */
+  #suche { background: transparent; border: 0; border-bottom: 2px solid rgba(255,255,255,.22); border-radius: 0; padding: 8px 2px; }
+  #suche:focus { outline: none; border-bottom-color: #e03131; }
+  .seg { display: flex; gap: 4px; overflow-x: auto; margin-top: 10px; padding: 3px; background: rgba(26,26,31,.9); border-radius: 12px; scrollbar-width: none; }
+  .seg::-webkit-scrollbar { display: none; }
+  .seg:empty { display: none; }
+  .seg button { flex: 0 0 auto; background: transparent; border: 0; border-radius: 9px; padding: 7px 14px; color: var(--muted); font-size: .9rem; white-space: nowrap; }
+  .seg button.on { background: #2e2e36; color: #fff; font-weight: 600; }
+  summary { font-size: .9rem; }
+  #liste:not(.raster) { background: rgba(14,14,18,.86); border-radius: 16px; padding: 4px 14px 8px; gap: 0; width: calc(100% - 32px); }
+  #liste:not(.raster) .karte { background: transparent; border: 0; border-bottom: 1px solid rgba(255,255,255,.09); border-radius: 0; padding: 10px 0; }
+  #liste:not(.raster) .karte:last-child { border-bottom: 0; }
+  #liste:not(.raster) .karte .cover { width: 56px; height: 56px; border-radius: 5px; }
+  #liste:not(.raster) .gruppe { margin: 14px 0 2px; padding: 0; border: 0; font-size: .78rem; letter-spacing: .16em; color: #e5483b; text-shadow: none; }
+  #liste:not(.raster) .gruppe:first-child { margin-top: 10px; }
+  .karte .rechts { flex: none; text-align: right; display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+  .karte .rechts .wert { color: #f2c14e; font-weight: 700; font-size: .95rem; white-space: nowrap; }
+  .karte .rechts .tag { font-size: .72rem; background: #26262d; color: #cfcbc6; border-radius: 6px; padding: 2px 7px; }
+  #liste.raster .gruppe { margin: 14px 0 2px; font-size: .8rem; letter-spacing: .16em; color: #ff7a6e; border: 0; }
+  /* Formular in Abschnitten */
+  #formGrid { display: block; margin-top: 4px; }
+  .sec { background: #17171c; border: 1px solid #25252c; border-radius: 14px; padding: 12px 14px 8px; margin-bottom: 10px; display: grid; grid-template-columns: 1fr 1fr; gap: 6px 14px; }
+  .sec .full { grid-column: 1 / -1; }
+  .sec h4 { grid-column: 1 / -1; margin: 0 0 2px; font-size: .74rem; letter-spacing: .14em; text-transform: uppercase; color: #e5483b; }
+  .sec input, .sec select, .sec textarea { background: transparent; border: 0; border-bottom: 1px solid #34343c; border-radius: 0; padding: 6px 0 7px; }
+  .sec input:focus, .sec select:focus, .sec textarea:focus { outline: none; border-bottom-color: #e5483b; }
+  .sec select option { background: #17171c; }
+  .untenleiste { position: sticky; bottom: -16px; margin: 14px -16px -16px; padding: 12px 16px; background: var(--bg); border-top: 1px solid #25252c; z-index: 2; }
+  .untenleiste button.primary { flex: 1 1 auto; padding: 12px; }
 </style>
 </head>
 <body>
@@ -146,9 +176,10 @@
     <h1>Plattenarchiv</h1>
   </div>
   <div class="leiste">
-  <input id="suche" type="search" placeholder="Alles durchsuchen …" autocomplete="off">
+  <input id="suche" type="search" placeholder="Suchen …" autocomplete="off">
+  <div id="genreLeiste" class="seg" role="group" aria-label="Genre"></div>
   <details id="filter">
-    <summary>Filter</summary>
+    <summary>Weitere Filter</summary>
     <div class="grid">
       <div><label>Band</label><input data-f="band"></div>
       <div><label>Album</label><input data-f="album"></div>
@@ -238,7 +269,7 @@
     <p class="hinweis">Beim Scannen/Online-Suchen wird das Cover automatisch geladen, falls es eins gibt.
       Du kannst auch ein eigenes Foto machen oder aus der Galerie nehmen.</p>
     <p class="hinweis">* Pflichtfelder: Band, Album, Genre</p>
-    <div class="aktionen">
+    <div class="aktionen untenleiste">
       <button type="button" id="loeschen" class="danger">Löschen</button>
       <span class="spacer"></span>
       <button type="button" id="abbrechen">Abbrechen</button>
@@ -375,19 +406,24 @@ function render() {
     }
     const k = document.createElement("div"); k.className = "karte mitbild";
     const meta = [d.genre, d.orig_jahr && "Orig. " + d.orig_jahr, d.jahr && "Pressung " + d.jahr,
-      d.format, d.zustand].filter(Boolean).join(" · ");
+      d.format].filter(Boolean).join(" · ");
     const band = document.createElement("b"); band.textContent = d.band;
     const stueck = parseInt(d.anzahl, 10) || 1;
-    if (stueck > 1) { const bd = document.createElement("span"); bd.className = "badge"; bd.textContent = stueck + "× vorhanden"; band.append(" ", bd); }
+    if (stueck > 1) { const bd = document.createElement("span"); bd.className = "badge"; bd.textContent = stueck + "×"; bd.title = stueck + "× vorhanden"; band.append(" ", bd); }
     const alb = document.createElement("div"); alb.className = "album"; alb.textContent = d.album;
     const m = document.createElement("div"); m.className = "meta"; m.textContent = meta;
-    if (d.marktwert) { const w = document.createElement("div"); w.className = "wert"; w.textContent = "Marktwert ≈ " + d.marktwert + " €"; m.append(w); }
     const text = document.createElement("div"); text.style.minWidth = "0"; text.append(band, alb, m);
     if (raster) {
       k.title = d.band + " – " + d.album;
       k.append(coverElement(d));
       if (stueck > 1) { const bd = document.createElement("span"); bd.className = "badge"; bd.textContent = stueck + "×"; k.append(bd); }
-    } else k.append(coverElement(d), text);
+    } else {
+      text.style.flex = "1 1 auto";
+      const rechts = document.createElement("div"); rechts.className = "rechts";
+      if (d.marktwert) { const w = document.createElement("span"); w.className = "wert"; w.title = "Marktwert (ca.)"; w.textContent = "≈ " + d.marktwert + " €"; rechts.append(w); }
+      if (d.zustand) { const t = document.createElement("span"); t.className = "tag"; t.textContent = d.zustand; rechts.append(t); }
+      k.append(coverElement(d), text, rechts);
+    }
     k.onclick = () => oeffne(d.uid);
     liste.appendChild(k);
   }
@@ -404,6 +440,16 @@ function optionen(sel, werte, leer) {
 function auswahllistenAktualisieren() {
   const genres = [...new Set(sichtbar().map(d => d.genre).filter(Boolean))].sort((a, b) => a.localeCompare(b, "de"));
   optionen($('[data-f="genre"]'), genres, "alle");
+  const leiste = $("#genreLeiste"); leiste.innerHTML = "";
+  if (genres.length > 1) {
+    const sel = $('[data-f="genre"]');
+    for (const g of ["", ...genres]) {
+      const b = document.createElement("button"); b.type = "button"; b.textContent = g || "Alle";
+      if (sel.value === g) b.className = "on";
+      b.onclick = () => { sel.value = g; render(); };
+      leiste.appendChild(b);
+    }
+  }
   const dl = $("#genreListe"); dl.innerHTML = "";
   genres.forEach(g => { const o = document.createElement("option"); o.value = g; dl.appendChild(o); });
 }
@@ -411,9 +457,16 @@ function auswahllistenAktualisieren() {
 // ---------- Formular ----------
 function baueFormular() {
   const grid = $("#formGrid");
+  const ABSCHNITTE = { band: "Pflichtangaben", jahr: "Details", anzahl: "Menge, Preis & Notizen" };
+  let sec = null;
   for (const [k, name] of FELDER) {
+    if (ABSCHNITTE[k] || !sec) {
+      sec = document.createElement("div"); sec.className = "sec";
+      const h = document.createElement("h4"); h.textContent = ABSCHNITTE[k] || "Angaben"; sec.appendChild(h);
+      grid.appendChild(sec);
+    }
     const div = document.createElement("div");
-    if (k === "band" || k === "album" || k === "notizen") div.className = "full";
+    if (k === "band" || k === "album" || k === "genre" || k === "notizen") div.className = "full";
     const lab = document.createElement("label"); lab.textContent = name + (PFLICHT.includes(k) ? " *" : "");
     let el;
     if (k === "format" || k === "zustand") {
@@ -429,7 +482,7 @@ function baueFormular() {
       if (k === "preis" || k === "marktwert") el.inputMode = "decimal";
       if (k === "anzahl" || k === "barcode") el.inputMode = "numeric";
     }
-    el.id = "f_" + k; div.append(lab, el); grid.appendChild(div);
+    el.id = "f_" + k; div.append(lab, el); sec.appendChild(div);
   }
 }
 function oeffne(uid) {
