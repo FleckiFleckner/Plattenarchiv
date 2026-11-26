@@ -328,6 +328,7 @@
   <div id="kamRegler">
     <label class="regler" hidden>Zoom <input type="range" id="zoomRegler"></label>
     <label class="regler" hidden>Helligkeit <input type="range" id="belichtungRegler"></label>
+    <label class="regler" hidden>Schärfe <input type="range" id="fokusRegler"></label>
   </div>
   <p class="hinweis" id="scanStatus"></p>
   <div class="row" style="gap: 8px; margin: 6px 0">
@@ -1099,28 +1100,48 @@ function kameraTrack() {
   const s = $("#video").srcObject;
   return s && s.getVideoTracks ? s.getVideoTracks()[0] : null;
 }
-// Zoom (aus etwas Abstand fokussiert es leichter) und Helligkeit (gegen Überbelichtung mit Licht) – nur, wenn die Kamera sie anbietet
+// Zoom, Helligkeit und Schärfe von Hand – nur, wenn die Kamera sie dem Browser anbietet
+let hellModus = "komp";   // "komp" = Belichtungskorrektur, "zeit" = feste Belichtungszeit (wirkt bei Licht stärker)
 function reglerVorbereiten(track, caps) {
-  const z = $("#zoomRegler"), e = $("#belichtungRegler");
+  const z = $("#zoomRegler"), e = $("#belichtungRegler"), f = $("#fokusRegler");
   const zeile = el => el.closest(".regler");
   const setze = c => track.applyConstraints({ advanced: [c] }).catch(() => {});
+  hellModus = "komp";
   if (track && caps.zoom && caps.zoom.max > caps.zoom.min) {
     z.min = caps.zoom.min; z.max = caps.zoom.max; z.step = caps.zoom.step || 0.1;
-    z.value = Math.min(caps.zoom.max, Math.max(caps.zoom.min, 2));   // Start mit 2×: so kann man weiter weg bleiben und das Bild wird scharf
+    z.value = Math.min(caps.zoom.max, Math.max(caps.zoom.min, 2));   // Start mit 2×: man kann weiter weg bleiben, das Bild wird eher scharf
     setze({ zoom: Number(z.value) }); zeile(z).hidden = false;
     z.oninput = () => setze({ zoom: Number(z.value) });
   } else zeile(z).hidden = true;
   if (track && caps.exposureCompensation && caps.exposureCompensation.max > caps.exposureCompensation.min) {
     const c = caps.exposureCompensation;
     e.min = c.min; e.max = c.max; e.step = c.step || 0.1; e.value = 0; zeile(e).hidden = false;
-    e.oninput = () => setze({ exposureCompensation: Number(e.value) });
+  } else if (track && caps.exposureTime && caps.exposureTime.max > caps.exposureTime.min) {
+    e.min = 0; e.max = 100; e.step = 1; e.value = 100; zeile(e).hidden = false; hellModus = "zeit";
   } else zeile(e).hidden = true;
+  e.oninput = () => helligkeitSetzen(Number(e.value));
+  if (track && caps.focusDistance && caps.focusDistance.max > caps.focusDistance.min && (caps.focusMode || []).includes("manual")) {
+    const d = caps.focusDistance;
+    f.min = d.min; f.max = Math.min(d.max, d.min * 12); f.step = d.step || (d.min / 10); f.value = Math.min(f.max, d.min * 3); zeile(f).hidden = false;
+    f.oninput = () => setze({ focusMode: "manual", focusDistance: Number(f.value) });
+  } else zeile(f).hidden = true;
+}
+function helligkeitSetzen(wert) {
+  const track = kameraTrack(); if (!track) return;
+  const caps = track.getCapabilities ? track.getCapabilities() : {};
+  const setze = c => track.applyConstraints({ advanced: [c] }).catch(() => {});
+  if (hellModus === "zeit" && caps.exposureTime) {
+    const t = caps.exposureTime, oben = Math.min(t.max, t.min * 300);   // kurze Belichtungszeiten: dunkler
+    setze({ exposureMode: "manual", exposureTime: t.min * Math.pow(oben / t.min, wert / 100) });
+  } else setze({ exposureCompensation: wert });
 }
 function belichtungFuerLicht(an) {   // mit Licht dunkler belichten, sonst ist der Strichcode überstrahlt
   const e = $("#belichtungRegler"), track = kameraTrack();
   if (!track || e.closest(".regler").hidden) return;
-  e.value = an ? Math.max(Number(e.min), -2) : 0;
-  track.applyConstraints({ advanced: [{ exposureCompensation: Number(e.value) }] }).catch(() => {});
+  if (hellModus === "zeit") {
+    if (an) { e.value = 15; helligkeitSetzen(15); }
+    else { e.value = 100; track.applyConstraints({ advanced: [{ exposureMode: "continuous" }] }).catch(() => {}); }
+  } else { e.value = an ? Math.max(Number(e.min), -2) : 0; helligkeitSetzen(Number(e.value)); }
 }
 function lichtVorbereiten() {
   const btn = $("#lichtBtn");
@@ -1253,14 +1274,16 @@ async function codeAusFoto(datei) {
   }
   return "";
 }
-$("#video").onclick = async () => {   // Tippen aufs Bild: neu fokussieren
+$("#video").onclick = async ev => {   // Tippen aufs Bild: dort neu fokussieren
   const track = kameraTrack(); if (!track || !track.getCapabilities) return;
-  const caps = track.getCapabilities();
-  if (!caps.focusMode) return;
-  try {
-    if (caps.focusMode.includes("single-shot")) await track.applyConstraints({ advanced: [{ focusMode: "single-shot" }] });
-    if (caps.focusMode.includes("continuous")) setTimeout(() => track.applyConstraints({ advanced: [{ focusMode: "continuous" }] }).catch(() => {}), 1200);
-  } catch (e) {}
+  const caps = track.getCapabilities(); const modi = caps.focusMode || [];
+  const r = $("#video").getBoundingClientRect();
+  const punkt = { x: Math.min(1, Math.max(0, (ev.clientX - r.left) / r.width)), y: Math.min(1, Math.max(0, (ev.clientY - r.top) / r.height)) };
+  const versuche = [];
+  if (modi.includes("single-shot")) versuche.push({ focusMode: "single-shot", pointsOfInterest: [punkt] }, { focusMode: "single-shot" });
+  else if (modi.includes("continuous")) versuche.push({ focusMode: "continuous", pointsOfInterest: [punkt] }, { focusMode: "continuous" });
+  for (const c of versuche) { try { await track.applyConstraints({ advanced: [c] }); break; } catch (e) {} }
+  if (modi.includes("continuous")) setTimeout(() => track.applyConstraints({ advanced: [{ focusMode: "continuous" }] }).catch(() => {}), 1500);
 };
 $("#btnScan").onclick = scanStart;
 $("#btnOnline").onclick = sucheText;
