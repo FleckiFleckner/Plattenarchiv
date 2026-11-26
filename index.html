@@ -104,7 +104,7 @@
     width: 56px; height: 56px; border-radius: 50%; font-size: 24px; padding: 0; line-height: 1;
     box-shadow: 0 4px 12px rgba(0,0,0,.3);
   }
-  #video { width: 100%; max-height: 50vh; background: #000; border-radius: 12px; object-fit: cover; }
+  #video { width: 100%; max-height: 38vh; background: #000; border-radius: 12px; object-fit: cover; }
   #lade {
     display: none; position: fixed; top: 0; left: 0; right: 0; z-index: 30; text-align: center;
     background: var(--accent); color: var(--accent-text); padding: 8px 16px; font-weight: 600;
@@ -170,6 +170,12 @@
   #wolke.fehler { color: #ff7a6e; }
   #wolke.laeuft { animation: puls 1s ease-in-out infinite; }
   @keyframes puls { 50% { opacity: .4; } }
+  #kamRegler { display: grid; gap: 6px; margin-top: 8px; }
+  #kamRegler .regler { display: grid; grid-template-columns: 5.5rem 1fr; align-items: center; gap: 8px; color: var(--muted); font-size: .88rem; }
+  #kamRegler input[type=range] { width: 100%; padding: 0; background: transparent; border: 0; accent-color: #e03131; }
+  .kamera { position: relative; }
+  .kamera #video { display: block; }
+  #lichtBtn { position: absolute; top: 8px; right: 8px; background: rgba(0,0,0,.65); border: 1px solid rgba(255,255,255,.25); border-radius: 999px; padding: 8px 14px; color: #fff; }
 </style>
 </head>
 <body>
@@ -223,7 +229,7 @@
   </div>
 </div>
 <main id="liste"></main>
-<button id="neu" class="primary" type="button" aria-label="Neue Platte">+</button>
+<button id="neu" class="primary" type="button" aria-label="Neue Platte (Barcode scannen)">+</button>
 
 <dialog id="einstDlg">
   <div class="row" style="justify-content: space-between">
@@ -311,19 +317,26 @@
 <div id="lade"></div>
 
 <dialog id="scanDlg">
-  <h2>Barcode scannen</h2>
-  <video id="video" playsinline muted autoplay></video>
+  <div class="row" style="justify-content: space-between; margin-bottom: 8px">
+    <h2 style="margin: 0">Barcode scannen</h2>
+    <button type="button" id="scanAbbrechen" aria-label="Schließen" style="padding: 6px 12px">✕</button>
+  </div>
+  <div class="kamera">
+    <video id="video" playsinline muted autoplay></video>
+    <button type="button" id="lichtBtn" hidden>💡 Licht an</button>
+  </div>
+  <div id="kamRegler">
+    <label class="regler" hidden>Zoom <input type="range" id="zoomRegler"></label>
+    <label class="regler" hidden>Helligkeit <input type="range" id="belichtungRegler"></label>
+  </div>
   <p class="hinweis" id="scanStatus"></p>
-  <div class="grid">
-    <div class="full"><label>Oder Nummer unter dem Strichcode eintippen</label>
-      <input id="codeEingabe" inputmode="numeric" placeholder="z. B. 5099902988214"></div>
+  <div class="row" style="gap: 8px; margin: 6px 0">
+    <input id="codeEingabe" inputmode="numeric" placeholder="Nummer eintippen, z. B. 5099902988214" aria-label="Nummer unter dem Strichcode" style="flex: 1 1 auto; min-width: 0">
+    <button type="button" id="codeSuchen" class="primary">Suchen</button>
   </div>
   <div class="aktionen">
-    <button type="button" id="codeSuchen" class="primary">Nummer suchen</button>
-    <button type="button" id="fotoBtn" class="primary">📷 Foto mit Kamera-App (beste Qualität)</button>
-    <button type="button" id="lichtBtn" hidden>💡 Licht an</button>
-    <span class="spacer"></span>
-    <button type="button" id="scanAbbrechen">Abbrechen</button>
+    <button type="button" id="fotoBtn">📷 Foto mit Kamera-App</button>
+    <button type="button" id="scanManuell">Von Hand eintragen</button>
   </div>
   <input id="fotoWahl" type="file" accept="image/*" capture="environment" hidden>
 </dialog>
@@ -603,7 +616,7 @@ $("#loeschen").onclick = async () => {
   Object.assign(daten.find(x => x.uid === aktuelleUid), { geloescht: true, geaendert: Date.now() });
   speichern(); $("#dlg").close(); render();
 };
-$("#neu").onclick = () => oeffne(null);
+$("#neu").onclick = () => scanStart();   // Plus öffnet direkt den Barcode-Scan; „Von Hand eintragen“ führt zum Formular
 
 // ---------- Filter-Steuerung ----------
 function baueFilter() {
@@ -1074,6 +1087,29 @@ function kameraTrack() {
   const s = $("#video").srcObject;
   return s && s.getVideoTracks ? s.getVideoTracks()[0] : null;
 }
+// Zoom (aus etwas Abstand fokussiert es leichter) und Helligkeit (gegen Überbelichtung mit Licht) – nur, wenn die Kamera sie anbietet
+function reglerVorbereiten(track, caps) {
+  const z = $("#zoomRegler"), e = $("#belichtungRegler");
+  const zeile = el => el.closest(".regler");
+  const setze = c => track.applyConstraints({ advanced: [c] }).catch(() => {});
+  if (track && caps.zoom && caps.zoom.max > caps.zoom.min) {
+    z.min = caps.zoom.min; z.max = caps.zoom.max; z.step = caps.zoom.step || 0.1;
+    z.value = Math.min(caps.zoom.max, Math.max(caps.zoom.min, 2));   // Start mit 2×: so kann man weiter weg bleiben und das Bild wird scharf
+    setze({ zoom: Number(z.value) }); zeile(z).hidden = false;
+    z.oninput = () => setze({ zoom: Number(z.value) });
+  } else zeile(z).hidden = true;
+  if (track && caps.exposureCompensation && caps.exposureCompensation.max > caps.exposureCompensation.min) {
+    const c = caps.exposureCompensation;
+    e.min = c.min; e.max = c.max; e.step = c.step || 0.1; e.value = 0; zeile(e).hidden = false;
+    e.oninput = () => setze({ exposureCompensation: Number(e.value) });
+  } else zeile(e).hidden = true;
+}
+function belichtungFuerLicht(an) {   // mit Licht dunkler belichten, sonst ist der Strichcode überstrahlt
+  const e = $("#belichtungRegler"), track = kameraTrack();
+  if (!track || e.closest(".regler").hidden) return;
+  e.value = an ? Math.max(Number(e.min), -2) : 0;
+  track.applyConstraints({ advanced: [{ exposureCompensation: Number(e.value) }] }).catch(() => {});
+}
 function lichtVorbereiten() {
   const btn = $("#lichtBtn");
   lichtAn = false; btn.textContent = "💡 Licht an";
@@ -1081,6 +1117,7 @@ function lichtVorbereiten() {
   const caps = track && track.getCapabilities ? track.getCapabilities() : {};
   if (caps.focusMode && caps.focusMode.includes("continuous"))
     track.applyConstraints({ advanced: [{ focusMode: "continuous" }] }).catch(() => {});
+  reglerVorbereiten(track, caps);
   if (caps.torch) { btn.hidden = false; }
   else {
     btn.hidden = true;
@@ -1094,10 +1131,12 @@ async function lichtUmschalten() {
     await track.applyConstraints({ advanced: [{ torch: !lichtAn }] });
     lichtAn = !lichtAn;
     $("#lichtBtn").textContent = lichtAn ? "💡 Licht aus" : "💡 Licht an";
+    belichtungFuerLicht(lichtAn);
   } catch (e) { toast("Das Licht lässt sich nicht schalten."); }
 }
 function scanStop() {
   $("#lichtBtn").hidden = true; lichtAn = false;
+  document.querySelectorAll("#kamRegler .regler").forEach(x => x.hidden = true);
   scanAktiv = false;
   if (scanTimer) { clearInterval(scanTimer); scanTimer = null; }
   if (zxReader) { try { zxReader.reset(); } catch (e) {} zxReader = null; }
@@ -1121,6 +1160,7 @@ async function zxStarten() {
   setTimeout(() => { if (scanAktiv) lichtVorbereiten(); }, 1500);
 }
 async function scanStart() {
+  if ($("#scanDlg").open) return;
   $("#codeEingabe").value = "";
   $("#scanStatus").textContent = "Kamera wird gestartet …";
   $("#scanDlg").showModal();
@@ -1157,7 +1197,7 @@ async function scanStart() {
           }
         }
       }, 300);
-      $("#scanStatus").textContent = "Strichcode (meist auf der Rückseite der Hülle) ins Bild halten …";
+      $("#scanStatus").textContent = "Strichcode ins Bild halten – etwa eine Handbreit Abstand, bei Unschärfe aufs Bild tippen oder zoomen …";
       lichtVorbereiten();
     } else {
       await zxStarten();
@@ -1201,9 +1241,19 @@ async function codeAusFoto(datei) {
   }
   return "";
 }
+$("#video").onclick = async () => {   // Tippen aufs Bild: neu fokussieren
+  const track = kameraTrack(); if (!track || !track.getCapabilities) return;
+  const caps = track.getCapabilities();
+  if (!caps.focusMode) return;
+  try {
+    if (caps.focusMode.includes("single-shot")) await track.applyConstraints({ advanced: [{ focusMode: "single-shot" }] });
+    if (caps.focusMode.includes("continuous")) setTimeout(() => track.applyConstraints({ advanced: [{ focusMode: "continuous" }] }).catch(() => {}), 1200);
+  } catch (e) {}
+};
 $("#btnScan").onclick = scanStart;
 $("#btnOnline").onclick = sucheText;
 $("#scanAbbrechen").onclick = scanSchliessen;
+$("#scanManuell").onclick = () => { scanSchliessen(); if (!$("#dlg").open) oeffne(null); };
 $("#lichtBtn").onclick = lichtUmschalten;
 $("#scanDlg").addEventListener("close", scanStop);
 $("#codeSuchen").onclick = () => {
