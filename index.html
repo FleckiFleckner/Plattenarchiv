@@ -367,7 +367,10 @@ const KEYS = FELDER.map(f => f[0]);
 const EXTRA = ["cover_mbid", "cover_foto", "discogs_id"];   // werden nur mitgeführt und synchronisiert
 const PFLICHT = ["band", "album", "genre"];
 const FORMATE = ["LP", "Doppel-LP", "EP", "Single 7\"", "Maxi 12\"", "Box-Set", "Sonstiges"];
-const ZUSTAND = ["M", "NM", "VG+", "VG", "G+", "G", "F/P"];
+// Einfache Zustandsstufen. Alte Einträge mit Goldmine-Kürzeln (M, NM, VG+ …) bleiben unverändert gespeichert und werden nur umgedeutet angezeigt.
+const ZUSTAND = ["Wie neu", "Sehr gut", "Gut", "Akzeptabel", "Schlecht"];
+const ZUSTAND_ALT = { "M": "Wie neu", "NM": "Wie neu", "VG+": "Sehr gut", "VG": "Gut", "G+": "Akzeptabel", "G": "Akzeptabel", "F/P": "Schlecht", "P": "Schlecht", "F": "Schlecht" };
+const zustandNeu = v => { const t = String(v ?? "").trim(); return ZUSTAND_ALT[t.toUpperCase()] || t; };
 const SPEICHER = "plattenarchiv-v1";
 
 let daten = laden();
@@ -415,7 +418,8 @@ function gefiltert() {
   return sichtbar().filter(d => {
     if (suche && !KEYS.some(k => norm(d[k]).includes(suche))) return false;
     for (const [k, v] of Object.entries(f)) {
-      if (["genre", "format", "zustand"].includes(k)) { if (norm(d[k]) !== norm(v)) return false; }
+      if (k === "zustand") { if (norm(zustandNeu(d[k])) !== norm(v)) return false; }
+      else if (["genre", "format"].includes(k)) { if (norm(d[k]) !== norm(v)) return false; }
       else if (!norm(d[k]).includes(norm(v))) return false;
     }
     return true;
@@ -423,6 +427,10 @@ function gefiltert() {
 }
 function vergleich(a, b) {
   const x = a[sortFeld] || "", y = b[sortFeld] || "";
+  if (sortFeld === "zustand") {   // vom besten zum schlechtesten Zustand; unbekannte Werte und leere ans Ende
+    const rang = v => { const i = ZUSTAND.indexOf(zustandNeu(v)); return i < 0 ? 99 : i; };
+    return rang(x) - rang(y);
+  }
   if (["jahr", "orig_jahr", "preis", "marktwert", "anzahl"].includes(sortFeld)) {
     const nx = parseFloat(String(x).replace(",", ".")), ny = parseFloat(String(y).replace(",", "."));
     if (isNaN(nx) && isNaN(ny)) return 0; if (isNaN(nx)) return 1; if (isNaN(ny)) return -1;
@@ -443,7 +451,7 @@ function render() {
   let letzteGruppe = null;
   for (const d of zeilen) {
     if (gruppieren) {
-      const roh = String(d[sortFeld] ?? "").trim();
+      const roh = sortFeld === "zustand" ? zustandNeu(d[sortFeld]) : String(d[sortFeld] ?? "").trim();
       const schluessel = norm(roh);
       if (schluessel !== letzteGruppe) {
         letzteGruppe = schluessel;
@@ -468,7 +476,7 @@ function render() {
     } else {
       text.style.flex = "1 1 auto";
       const rechts = document.createElement("div"); rechts.className = "rechts";
-      if (d.zustand) { const t = document.createElement("span"); t.className = "tag"; t.textContent = d.zustand; rechts.append(t); }
+      if (d.zustand) { const t = document.createElement("span"); t.className = "tag"; t.textContent = zustandNeu(d.zustand); rechts.append(t); }
       const links = document.createElement("div"); links.className = "links";   // Cover mit Marktwert darunter
       links.append(coverElement(d));
       if (d.marktwert) { const w = document.createElement("span"); w.className = "wert"; w.title = "Marktwert (ca.)"; w.textContent = "≈ " + d.marktwert + " €"; links.append(w); }
@@ -539,7 +547,10 @@ function oeffne(uid) {
   aktuelleUid = uid || null;
   const d = uid ? daten.find(x => x.uid === uid) : null;
   $("#dlgTitel").textContent = d ? "Platte bearbeiten" : "Neue Platte";
-  KEYS.forEach(k => { $("#f_" + k).value = d ? (d[k] || "") : ""; });
+  KEYS.forEach(k => { $("#f_" + k).value = d ? (k === "zustand" ? zustandNeu(d[k]) : (d[k] || "")) : ""; });
+  const zsel = $("#f_zustand");
+  [...zsel.options].forEach(o => { if (o.value && !ZUSTAND.includes(o.value)) o.remove(); });   // unbekannter Altwert (z. B. selbst getippt) bleibt als Option erhalten, damit er beim Speichern nicht verloren geht
+  if (zsel.value !== (d ? zustandNeu(d.zustand) : "")) { const o = document.createElement("option"); o.value = o.textContent = zustandNeu(d.zustand); zsel.appendChild(o); zsel.value = o.value; }
   if (!d) $("#f_anzahl").value = "1";
   formCover = { foto: d ? d.cover_foto || "" : "", mbid: d ? d.cover_mbid || "" : "", discogs: d ? d.discogs_id || "" : "" };
   coverVorschau();
