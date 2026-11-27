@@ -190,8 +190,8 @@
   .tl .n { color: var(--akz-hell); width: 28px; flex: none; font-weight: 700; } .tl .t { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; } .tl .d { color: var(--muted); flex: none; }
   .tl li.tlseite { display: block; border: 0; padding: 8px 0 0; color: var(--akz-hell); font-size: .72rem; letter-spacing: .14em; font-weight: 700; }
   .tlinfo { color: var(--muted); font-size: .8rem; margin: 8px 0 0; } .tlinfo .linkbtn { padding: 0 2px; font-size: .8rem; }
-  .tlinks { display: grid; gap: 8px; }
-  .tlinks a { display: flex; align-items: center; justify-content: space-between; padding: 11px 14px; border-radius: 12px; background: var(--seg-bg); border: 1px solid rgba(255,255,255,.14); color: var(--text); text-decoration: none; font-size: .95rem; }
+  .tlinks { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .tlinks a { display: flex; align-items: center; justify-content: center; gap: 6px; padding: 10px 6px; border-radius: 12px; background: var(--seg-bg); border: 1px solid rgba(255,255,255,.14); color: var(--text); text-decoration: none; font-size: .95rem; }
   .tlinks a span { color: var(--akz-hell); }
   .tlu { display: flex; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,.09); font-size: .88rem; }
   .tlu .tx { flex: 1 1 auto; min-width: 0; } .tlu .tx small { display: block; color: var(--muted); } .tlu button { flex: none; padding: 6px 12px; }
@@ -294,12 +294,12 @@
   .dtabs button { flex: 1; background: transparent; border: 0; padding: 8px 4px; border-radius: 9px; color: var(--muted); font-weight: 600; font-size: .9rem; }
   .dtabs button.on { background: var(--seg-on); color: var(--text); }
   #dBody [data-tab] { display: none; }
-  #dBody.t-basis [data-tab="basis"], #dBody.t-details [data-tab="details"], #dBody.t-wert [data-tab="wert"], #dBody.t-foto [data-tab="foto"] { display: grid; }
+  #dBody.t-basis [data-tab="basis"], #dBody.t-details [data-tab="details"], #dBody.t-titel [data-tab="titel"], #dBody.t-foto [data-tab="foto"] { display: grid; }
   #dBody > details[data-tab], #dBody > p[data-tab] { }
-  #dBody.t-basis details[data-tab="basis"], #dBody.t-wert details[data-tab="wert"] { display: block; }
+  #dBody.t-basis details[data-tab="basis"] { display: block; }
   #dBody.t-basis p[data-tab="basis"] { display: block; }
   #dBody .aktionen[data-tab] { display: none; }
-  #dBody.t-basis .aktionen[data-tab="basis"], #dBody.t-wert .aktionen[data-tab="wert"] { display: flex; }
+  #dBody.t-basis .aktionen[data-tab="basis"] { display: flex; }
   #dBody [hidden] { display: none !important; }
   #dlg[open] { display: flex; flex-direction: column; height: min(94vh, 800px); overflow: hidden; }   /* feste Höhe: Fenster springt beim Reiterwechsel nicht */
   #dlg #form { display: flex; flex-direction: column; flex: 1; min-height: 0; }
@@ -317,6 +317,10 @@
   .info summary { font-size: .82rem; padding: 2px 0; } .info { margin: 0 0 8px; }
   .chips { display: flex; gap: 6px; flex-wrap: wrap; padding: 4px 0 6px; }
   .chips button { padding: 7px 12px; border-radius: 999px; font-size: .85rem; }
+  #markenChips:empty { display: none; }
+  #markenVorschlag { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; } #markenVorschlag::-webkit-scrollbar { display: none; }
+  #markenVorschlag button { flex: none; white-space: nowrap; }
+  #markeAdd { padding: 8px 14px; }
   .mchip { display: inline-block; margin-left: 2px; padding: 0 8px; border-radius: 6px; background: rgba(182,85,216,.16); border: 1px solid rgba(182,85,216,.5); color: #e2b6f2; font-size: .78rem; font-weight: 600; line-height: 1.5; white-space: nowrap; }
   #markenChips button::after { content: " ×"; opacity: .7; }
   .chips button.on { border-color: var(--accent); background: rgba(182,85,216,.22); box-shadow: 0 0 10px rgba(182,85,216,.35); }
@@ -580,7 +584,7 @@
   <div class="eseite" data-seite="ueber" hidden>
     <div class="ekarte">
       <b id="ueberZahlen"></b>
-      <span class="hinweis" id="ueberVersion" style="display:block;margin:2px 0 0">Version 59 (Titellisten & Links)</span>
+      <span class="hinweis" id="ueberVersion" style="display:block;margin:2px 0 0">Version 61 (Eigener Titel-Reiter)</span>
       <p class="hinweis">Die Daten liegen in diesem Browser und – wenn Google Drive verbunden ist – zusätzlich in deinem Drive. Mit „Sync-Datei exportieren“ kannst du jederzeit eine Sicherung ziehen.</p>
     </div>
   </div>
@@ -596,7 +600,7 @@
     <div class="dtabs" id="dtabs" role="tablist">
       <button type="button" data-t="basis" class="on">Basis</button>
       <button type="button" data-t="details">Details</button>
-      <button type="button" data-t="wert">Wert</button>
+      <button type="button" data-t="titel">Titel</button>
       <button type="button" data-t="foto">Foto</button>
     </div>
     <div id="dBody" class="t-basis">
@@ -953,7 +957,7 @@ function baueFormular() {
   // [Schlüssel] → Reiter + Abschnittsüberschrift (beginnt bei diesem Feld einen neuen Abschnitt)
   const TAB = { band: "basis", album: "basis", genre: "basis", jahr: "basis", format: "basis", zustand: "basis",
                 orig_jahr: "details", label: "details", katalognr: "details", barcode: "details", land: "details", notizen: "details",
-                anzahl: "wert", preis: "wert", marktwert: "wert" };
+                anzahl: "details", preis: "details", marktwert: "details" };
   const START = { band: "Pflichtangaben", jahr: "Pressung & Zustand", orig_jahr: "Ausgabe", notizen: "Notizen", anzahl: "Menge & Preis" };
   const secs = {};
   const neuerAbschnitt = (tab, titel) => {
@@ -974,7 +978,7 @@ function baueFormular() {
       for (const w of ["", ...(k === "format" ? FORMATE : ZUSTAND)]) {
         const o = document.createElement("option"); o.value = w; o.textContent = w || "–"; el.appendChild(o);
       }
-    } else if (k === "notizen") { el = document.createElement("textarea"); el.rows = 3; }
+    } else if (k === "notizen") { el = document.createElement("textarea"); el.rows = 2; }
     else {
       el = document.createElement("input");
       if (k === "genre") el.setAttribute("list", "genreListe");
@@ -988,25 +992,30 @@ function baueFormular() {
   }
   const mk = neuerAbschnitt("details", "Marken");
   mk.insertAdjacentHTML("beforeend", '<div class="full"><div class="chips" id="markenChips"></div>'
-    + '<div class="row" style="gap:8px"><input id="markeNeu" list="markenDatalist" placeholder="Marke eintippen, z. B. Signiert" autocomplete="off" style="flex:1 1 auto;min-width:0"><button type="button" id="markeAdd" class="primary" aria-label="Marke hinzufügen">+</button></div>'
+    + '<div class="row" style="gap:8px"><input id="markeNeu" list="markenDatalist" placeholder="Marke hinzufügen" autocomplete="off" style="flex:1 1 auto;min-width:0"><button type="button" id="markeAdd" class="primary" aria-label="Marke hinzufügen">+</button></div>'
     + '<div class="chips" id="markenVorschlag" style="margin-top:6px"></div></div>');
   const notizSec = [...grid.children].find(e => e.firstChild && e.firstChild.textContent === "Notizen"); if (notizSec) grid.insertBefore(mk, notizSec);
   $("#markeAdd").onclick = () => markeHinzu($("#markeNeu").value);
   $("#markeNeu").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); markeHinzu($("#markeNeu").value); } });
-  const ml = neuerAbschnitt("details", "Mehr zur Platte");
-  ml.insertAdjacentHTML("beforeend", '<div class="full tlinks"><a id="tlLinkDiscogs" target="_blank" rel="noopener">Bei Discogs öffnen <span>↗</span></a>'
-    + '<a id="tlLinkJpc" target="_blank" rel="noopener">Bei jpc suchen <span>↗</span></a><a id="tlLinkYt" target="_blank" rel="noopener">Bei YouTube suchen <span>↗</span></a></div>');
-  const tls = neuerAbschnitt("details", "Titelliste");
+  const ml = neuerAbschnitt("titel", "Mehr zur Platte");
+  ml.insertAdjacentHTML("beforeend", '<div class="full tlinks"><a id="tlLinkDiscogs" target="_blank" rel="noopener" title="Bei Discogs öffnen">Discogs <span>↗</span></a>'
+    + '<a id="tlLinkJpc" target="_blank" rel="noopener">jpc <span>↗</span></a><a id="tlLinkYt" target="_blank" rel="noopener">YouTube <span>↗</span></a></div>');
+  const tls = neuerAbschnitt("titel", "Titelliste");
   tls.insertAdjacentHTML("beforeend", '<div class="full"><div id="tlBox"></div><div class="tlinfo" id="tlInfo"></div></div>');
   ["tlLinkDiscogs", "tlLinkJpc", "tlLinkYt"].forEach(id => { $("#" + id).addEventListener("click", tlLinksSetzen); });
   const zd = $("#f_zustand").parentElement.parentElement;   // Bewertung im Abschnitt „Pressung & Zustand“, damit nichts wegscrollt
   zd.insertAdjacentHTML("beforeend", '<div class="full bewZeile"><label>Meine Bewertung</label><div class="sterneWahl" id="sterneWahl" role="group" aria-label="Bewertung"></div></div>');
-  const kf = neuerAbschnitt("wert", "Kauf");
+  const kf = neuerAbschnitt("details", "Kauf");
   kf.insertAdjacentHTML("beforeend", '<div><label for="f_kaufdatum">Gekauft am</label><input id="f_kaufdatum" type="date"></div>'
     + '<div><label for="f_haendler">Gekauft bei</label><input id="f_haendler" list="haendlerListe" placeholder="z. B. Plattenladen, Discogs"></div>');
-  const ws = neuerAbschnitt("wert", "Wunschliste");
+  const ws = neuerAbschnitt("details", "Wunschliste");
   ws.insertAdjacentHTML("beforeend", '<div class="full" id="wunschBox"><label for="f_zielpreis">Zielpreis (€)</label><input id="f_zielpreis" inputmode="decimal" placeholder="z. B. 25,00"></div>'
     + '<div class="full kauf" id="kaufBox"><button type="button" id="gekauft">✓ Gekauft – in die Sammlung übernehmen</button></div>');
+  // Marktwert-Knopf und Hinweis gehören jetzt in den Abschnitt „Menge & Preis“; Reihenfolge im Reiter „Details“ festlegen
+  const abschnitt = t => [...grid.children].find(e => e.firstChild && e.firstChild.textContent === t);
+  const mp = abschnitt("Menge & Preis");
+  document.querySelectorAll('#dBody > [data-tab="wert"]').forEach(e => { e.removeAttribute("data-tab"); e.classList.add("full"); if (mp) mp.appendChild(e); });
+  ["Ausgabe", "Marken", "Menge & Preis", "Kauf", "Wunschliste", "Notizen", "Titelliste", "Mehr zur Platte"].forEach(t => { const e = abschnitt(t); if (e) grid.appendChild(e); });
   const sw = $("#sterneWahl");
   for (let i = 1; i <= 5; i++) {
     const b = document.createElement("button"); b.type = "button"; b.textContent = "★"; b.setAttribute("aria-label", i + " Sterne");
@@ -1014,7 +1023,7 @@ function baueFormular() {
     sw.appendChild(b);
   }
   $("#gekauft").onclick = () => {
-    formWunsch = false; wunschZeigen(); dlgReiter("wert");
+    formWunsch = false; wunschZeigen(); dlgReiter("details");
     if (!$("#f_kaufdatum").value) { const t = new Date(); $("#f_kaufdatum").value = t.getFullYear() + "-" + String(t.getMonth() + 1).padStart(2, "0") + "-" + String(t.getDate()).padStart(2, "0"); }
     $("#f_preis").focus();
     toast("Wird in die Sammlung übernommen – EK-Preis und Zustand ergänzen und speichern.");
@@ -1144,7 +1153,7 @@ $("#form").addEventListener("submit", async e => {
   for (const [k, name] of [["jahr", "Jahr (Pressung)"], ["orig_jahr", "Erstveröff. (Album)"]]) {
     if (werte[k] && !/^\d{4}$/.test(werte[k])) { dlgReiter(k === "jahr" ? "basis" : "details"); toast(name + ": bitte vierstellig angeben."); return; }
   }
-  if (werte.anzahl && !/^[1-9]\d*$/.test(werte.anzahl)) { dlgReiter("wert"); toast("Anzahl: bitte eine ganze Zahl ab 1 angeben."); return; }
+  if (werte.anzahl && !/^[1-9]\d*$/.test(werte.anzahl)) { dlgReiter("details"); toast("Anzahl: bitte eine ganze Zahl ab 1 angeben."); return; }
   if (!werte.anzahl) werte.anzahl = "1";
   let neuUid = null;
   if (!aktuelleUid) {
