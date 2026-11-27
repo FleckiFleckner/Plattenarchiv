@@ -275,6 +275,8 @@
   .mwzeile { display: flex; align-items: flex-end; gap: 8px; } .mwzeile input { flex: 1 1 auto; min-width: 0; }
   .mwklein { flex: none; width: 40px; height: 36px; padding: 0; font-size: 1.15rem; line-height: 1; }
   #zufallAlt { width: 18px; height: 18px; flex: none; padding: 0; margin: 0; accent-color: var(--akz-hell); }
+  .zbtns { justify-content: center; flex-wrap: nowrap; } .zbtns button { flex: 1 1 0; min-width: 0; padding: 10px 4px; white-space: nowrap; font-size: .85rem; } .zbtns button.primary { flex: 1.4 1 0; }
+  #zufallGehoert { font-size: .8rem; margin: 6px 0 !important; }
   .hoerlabel { display: flex; gap: 8px; justify-content: center; align-items: center; font-size: .85rem; margin: 2px 0 10px; color: #d9d5d0; }
   #hoerPlus, #hoerNull { white-space: nowrap; flex: none; padding: 8px 12px; }
   .gruen { background: #2e8b57; border-color: #2e8b57; color: #fff; }
@@ -430,10 +432,11 @@
   .scanlinks { display: flex; justify-content: center; gap: 22px; margin-top: 8px; }
   #ocrDlg label { margin-bottom: 2px; } #ocrDlg #ocrChips { margin-top: 4px; }
   .ocrzeile { margin: 0 0 6px; }
-  #zufallKarte { display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center; padding: 6px 0 4px; }
-  #zufallKarte .cover { width: min(62vw, 240px); height: min(62vw, 240px); border-radius: 12px; font-size: 64px; box-shadow: 0 0 22px 4px var(--glow); }
-  #zufallKarte b { font-size: 1.3rem; margin-top: 12px; } #zufallKarte .alb { font-size: 1.1rem; }
-  #zufallKarte .meta { color: var(--muted); font-size: .9rem; } #zufallKarte .zeilechips { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 6px; }
+  #zufallKarte { display: grid; grid-template-columns: 112px minmax(0, 1fr); column-gap: 14px; row-gap: 2px; align-items: center; align-content: center; text-align: left; padding: 4px 0; }
+  #zufallKarte .cover { grid-row: 1 / span 3; grid-column: 1; width: 112px; height: 112px; border-radius: 10px; font-size: 40px; box-shadow: 0 0 16px 3px var(--glow); }
+  #zufallKarte > b, #zufallKarte > .alb, #zufallKarte > .meta { grid-column: 2; min-width: 0; }
+  #zufallKarte b { font-size: 1.1rem; margin: 0; } #zufallKarte .alb { font-size: 1rem; }
+  #zufallKarte .meta { color: var(--muted); font-size: .9rem; } #zufallKarte .zeilechips { grid-column: 1 / -1; display: flex; gap: 6px; justify-content: flex-start; flex-wrap: wrap; margin-top: 8px; }
   #zufallKarte.neu { animation: zuf .45s ease; } @keyframes zuf { from { opacity: 0; transform: scale(.92) rotate(-2deg); } to { opacity: 1; transform: none; } }
   @media (prefers-reduced-motion: reduce) { #zufallKarte.neu { animation: none; } }
   #zufallBtn { font-size: 1.1rem; }
@@ -649,7 +652,7 @@
   <div class="eseite" data-seite="ueber" hidden>
     <div class="ekarte">
       <b id="ueberZahlen"></b>
-      <span class="hinweis" id="ueberVersion" style="display:block;margin:2px 0 0">Version 69 (Galerie, CSV-Import, Foto-Sicherung)</span>
+      <span class="hinweis" id="ueberVersion" style="display:block;margin:2px 0 0">Version 70 (Würfel kompakt)</span>
       <div class="aktionen" style="margin:6px 0"><button type="button" id="hilfeAusEinst">? Was bedeutet was?</button></div>
       <p class="hinweis">Die Daten liegen in diesem Browser und – wenn Google Drive verbunden ist – zusätzlich in deinem Drive. Mit „Sync-Datei exportieren“ kannst du jederzeit eine Sicherung ziehen.</p>
     </div>
@@ -724,12 +727,12 @@
 <dialog id="zufallDlg">
   <div class="dkopf"><h2>Was höre ich heute?</h2><button type="button" id="zufallX" aria-label="Schließen">✕</button></div>
   <div id="zufallKarte"></div>
-  <p class="hinweis" id="zufallGehoert" style="text-align:center;margin:4px 0"></p>
-  <p class="hinweis" id="zufallHinweis" style="text-align:center"></p>
-  <div class="aktionen" style="justify-content:center;margin-bottom:6px"><button type="button" id="zufallGehoertBtn" class="gruen">✓ Heute gehört</button></div>
+  <p class="hinweis" id="zufallGehoert" style="text-align:center"></p>
+  <p class="hinweis" id="zufallHinweis" hidden></p>
   <label class="hoerlabel"><input type="checkbox" id="zufallAlt"> Lange nicht gehörte bevorzugen</label>
-  <div class="aktionen" style="justify-content:center">
-    <button type="button" id="zufallNochmal" class="primary">🎲 Nochmal würfeln</button>
+  <div class="aktionen zbtns">
+    <button type="button" id="zufallNochmal" class="primary">🎲 Nochmal</button>
+    <button type="button" id="zufallGehoertBtn" class="gruen" title="Heute gehört vermerken">✓ Gehört</button>
     <button type="button" id="zufallOeffnen">Ansehen</button>
   </div>
 </dialog>
@@ -1420,7 +1423,7 @@ document.addEventListener("click", e => {
 });
 function zufallGehoertZeigen() {
   const d = daten.find(x => x.uid === zufallUid), t = $("#zufallGehoert");
-  t.textContent = d ? hoerText(d.gehoert_n, d.gehoert_zeit) : ""; $("#zufallGehoertBtn").disabled = !d;
+  t.textContent = d ? hoerText(d.gehoert_n, d.gehoert_zeit) + " · " + $("#zufallHinweis").textContent.replace(" in der Auswahl", " im Würfel") : ""; $("#zufallGehoertBtn").disabled = !d;
 }
 $("#zufallGehoertBtn").onclick = () => {
   const d = daten.find(x => x.uid === zufallUid); if (!d) return;
