@@ -5,6 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#08070d">
 <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
 <title>Plattenarchiv</title>
 <style>
   /* Design: dunkler Flüssigfarben-Hintergrund (Orchidee), Karten leicht durchscheinend, lila Akzent. */
@@ -469,7 +473,7 @@
   <div class="eseite" data-seite="ueber" hidden>
     <div class="ekarte">
       <b id="ueberZahlen"></b>
-      <span class="hinweis" id="ueberVersion" style="display:block;margin:2px 0 0">Version 45 (Zufallsplatte)</span>
+      <span class="hinweis" id="ueberVersion" style="display:block;margin:2px 0 0">Version 46 (Als App installierbar)</span>
       <p class="hinweis">Die Daten liegen in diesem Browser und – wenn Google Drive verbunden ist – zusätzlich in deinem Drive. Mit „Sync-Datei exportieren“ kannst du jederzeit eine Sicherung ziehen.</p>
     </div>
   </div>
@@ -2142,6 +2146,8 @@ $("#discogsToken").addEventListener("change", e => {
 });
 
 baueFormular(); baueFilter(); render(); bgAnwenden();
+// Als App installierbar / offline nutzbar (nur über https bzw. localhost; in Vorschauen still ohne Wirkung)
+try { if ("serviceWorker" in navigator && /^https?:$/.test(location.protocol)) navigator.serviceWorker.register("sw.js").catch(() => {}); } catch (e) {}
 </script>
 </body>
 </html>
