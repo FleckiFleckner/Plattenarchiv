@@ -446,7 +446,7 @@
   <div class="eseite" data-seite="ueber" hidden>
     <div class="ekarte">
       <b id="ueberZahlen"></b>
-      <span class="hinweis" id="ueberVersion" style="display:block;margin:2px 0 0">Version 36 (Discogs-Barcode-Suche erweitert)</span>
+      <span class="hinweis" id="ueberVersion" style="display:block;margin:2px 0 0">Version 38 (Fehlerbericht bei der Barcode-Suche)</span>
       <p class="hinweis">Die Daten liegen in diesem Browser und – wenn Google Drive verbunden ist – zusätzlich in deinem Drive. Mit „Sync-Datei exportieren“ kannst du jederzeit eine Sicherung ziehen.</p>
     </div>
   </div>
@@ -1552,11 +1552,11 @@ async function sucheBarcode(code) {
     }
     meldung("");
     if (!liste.length) {
-      toast(keinToken
-        ? "Bei MusicBrainz nichts gefunden. Mit einem Discogs-Token (Einstellungen) suche ich zusätzlich dort."
-        : "Zu diesem Barcode nichts gefunden – trage Band/Album ein und nutze „Online suchen“.");
       if (!$("#dlg").open) oeffne(null);
       $("#f_barcode").value = code;   // der gescannte Code bleibt gespeichert, damit Doppelte später erkannt werden
+      await frage("Zu " + code + " wurde nichts gefunden.\n\nMusicBrainz: keine Treffer\nDiscogs: " + (keinToken
+        ? "übersprungen – auf diesem Gerät ist kein Discogs-Token hinterlegt (Einstellungen → Marktwerte & Discogs; der Token wird nicht zwischen Geräten abgeglichen)"
+        : "keine Treffer (4 Schreibweisen geprüft)") + "\n\nTrage Band und Album ein und tippe auf „Online suchen“.", ["OK"]);
       return;
     }
     const wahl = liste.length === 1 ? liste[0] : await waehleTreffer(liste);
