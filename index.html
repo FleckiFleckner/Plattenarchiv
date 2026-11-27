@@ -281,9 +281,26 @@
   #kamRegler { display: grid; gap: 6px; margin-top: 8px; }
   #kamRegler .regler { display: grid; grid-template-columns: 5.5rem 1fr; align-items: center; gap: 8px; color: var(--muted); font-size: .88rem; }
   #kamRegler input[type=range] { width: 100%; padding: 0; background: transparent; border: 0; accent-color: var(--accent); }
-  .kamera { position: relative; }
-  .kamera #video { display: block; }
-  #lichtBtn { position: absolute; top: 8px; right: 8px; background: rgba(0,0,0,.65); border: 1px solid rgba(255,255,255,.25); border-radius: 999px; padding: 8px 14px; color: #fff; }
+  .sucher { position: relative; border-radius: 16px; overflow: hidden; background: #000; }
+  .sucher #video { display: block; width: 100%; height: min(46vh, 340px); max-height: none; border-radius: 0; object-fit: cover; }
+  .zielrahmen { position: absolute; inset: 20% 11%; pointer-events: none; border-radius: 10px; --e: 26px; --d: 3px;
+    background:
+      linear-gradient(var(--akz-hell), var(--akz-hell)) top left / var(--e) var(--d) no-repeat, linear-gradient(var(--akz-hell), var(--akz-hell)) top left / var(--d) var(--e) no-repeat,
+      linear-gradient(var(--akz-hell), var(--akz-hell)) top right / var(--e) var(--d) no-repeat, linear-gradient(var(--akz-hell), var(--akz-hell)) top right / var(--d) var(--e) no-repeat,
+      linear-gradient(var(--akz-hell), var(--akz-hell)) bottom left / var(--e) var(--d) no-repeat, linear-gradient(var(--akz-hell), var(--akz-hell)) bottom left / var(--d) var(--e) no-repeat,
+      linear-gradient(var(--akz-hell), var(--akz-hell)) bottom right / var(--e) var(--d) no-repeat, linear-gradient(var(--akz-hell), var(--akz-hell)) bottom right / var(--d) var(--e) no-repeat; }
+  .zielrahmen .laser { position: absolute; left: 6%; right: 6%; top: 50%; height: 2px; background: var(--accent); box-shadow: 0 0 12px var(--accent); animation: laser 2.4s ease-in-out infinite alternate; }
+  @keyframes laser { from { top: 12%; } to { top: 88%; } }
+  @media (prefers-reduced-motion: reduce) { .zielrahmen .laser { animation: none; } }
+  .rundbtn { position: absolute; right: 10px; width: 40px; height: 40px; padding: 0; border-radius: 50%; background: rgba(10,9,16,.65); border: 1px solid rgba(255,255,255,.25); color: #fff; font-size: 1.1rem; line-height: 1; }
+  #lichtBtn { top: 10px; } #kamBtn { top: 58px; }
+  .rundbtn.an { background: var(--accent); border-color: var(--accent); box-shadow: 0 0 12px var(--glow); }
+  .scanText { text-align: center; min-height: 2.6em; margin: 8px 0 4px; }
+  #kamPanel { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 10px 12px; margin: 4px 0 8px; }
+  #kamPanel .hinweis { margin: 4px 0 0; font-size: .78rem; }
+  .nummernzeile { margin: 6px 0 4px; } .nummernzeile input { flex: 1 1 auto; min-width: 0; } .nummernzeile button { padding: 10px 18px; }
+  .scanlinks { display: flex; justify-content: center; gap: 22px; margin-top: 8px; }
+  .linkbtn { background: transparent; border: 0; color: var(--akz-hell); padding: 8px 4px; font-size: .92rem; }
 </style>
 </head>
 <body>
@@ -478,31 +495,32 @@
 <div id="lade"></div>
 
 <dialog id="scanDlg">
-  <div class="row" style="justify-content: space-between; margin-bottom: 8px">
-    <h2 style="margin: 0">Barcode scannen</h2>
-    <button type="button" id="scanAbbrechen" aria-label="Schließen" style="padding: 6px 12px">✕</button>
-  </div>
-  <div class="kamera">
+  <div class="dkopf"><h2>Barcode scannen</h2><button type="button" id="scanAbbrechen" aria-label="Schließen">✕</button></div>
+  <div class="sucher">
     <video id="video" playsinline muted autoplay></video>
-    <button type="button" id="lichtBtn" hidden>💡 Licht an</button>
+    <div class="zielrahmen" aria-hidden="true"><i class="laser"></i></div>
+    <button type="button" class="rundbtn" id="lichtBtn" aria-label="Licht an" title="Licht" hidden>💡</button>
+    <button type="button" class="rundbtn" id="kamBtn" aria-label="Kamera-Einstellungen" title="Kamera-Einstellungen" hidden>⚙</button>
   </div>
-  <div id="kamRegler">
-    <label class="regler" hidden>Zoom <input type="range" id="zoomRegler"></label>
-    <label class="regler" hidden>Helligkeit <input type="range" id="belichtungRegler"></label>
-    <label class="regler" hidden>Schärfe <input type="range" id="fokusRegler"></label>
+  <p class="hinweis scanText" id="scanStatus"></p>
+  <div id="kamPanel" hidden>
+    <div id="kamRegler">
+      <label class="regler" hidden>Zoom <input type="range" id="zoomRegler"></label>
+      <label class="regler" hidden>Helligkeit <input type="range" id="belichtungRegler"></label>
+      <label class="regler" hidden>Schärfe <input type="range" id="fokusRegler"></label>
+    </div>
+    <p class="hinweis" id="kamInfo"></p>
   </div>
-  <p class="hinweis" id="scanStatus"></p>
-  <div class="row" style="gap: 8px; margin: 6px 0">
-    <input id="codeEingabe" inputmode="numeric" placeholder="Nummer eintippen, z. B. 5099902988214" aria-label="Nummer unter dem Strichcode" style="flex: 1 1 auto; min-width: 0">
+  <div class="row nummernzeile">
+    <input id="codeEingabe" inputmode="numeric" placeholder="Oder Nummer eintippen" aria-label="Nummer unter dem Strichcode">
     <button type="button" id="codeSuchen" class="primary">Suchen</button>
   </div>
-  <div class="aktionen">
-    <button type="button" id="fotoBtn">📷 Foto mit Kamera-App</button>
-    <button type="button" id="scanManuell">Von Hand eintragen</button>
+  <div class="scanlinks">
+    <button type="button" id="fotoBtn" class="linkbtn">📷 Foto aufnehmen</button>
+    <button type="button" id="scanManuell" class="linkbtn">✎ Von Hand eintragen</button>
   </div>
   <input id="fotoWahl" type="file" accept="image/*" capture="environment" hidden>
 </dialog>
-
 <dialog id="frageDlg">
   <p id="frageText" style="margin:0 0 4px; white-space: pre-line"></p>
   <div class="aktionen" id="frageKnoepfe" style="flex-direction: column"></div>
@@ -1560,10 +1578,31 @@ function kameraTrack() {
 }
 // Zoom, Helligkeit und Schärfe von Hand – nur, wenn die Kamera sie dem Browser anbietet
 let hellModus = "komp";   // "komp" = Belichtungskorrektur, "zeit" = feste Belichtungszeit (wirkt bei Licht stärker)
+// Kamera-Einstellung setzen: erst als „advanced“, sonst als normale Vorgabe; Fehler werden einmal gemeldet statt verschluckt
+let kamFehlerGemeldet = false;
+async function kamSetze(track, c) {
+  try { await track.applyConstraints({ advanced: [c] }); return true; }
+  catch (e1) {
+    try { await track.applyConstraints(c); return true; }
+    catch (e2) {
+      if (!kamFehlerGemeldet) { kamFehlerGemeldet = true; $("#kamInfo").textContent = "Diese Einstellung nimmt die Kamera nicht an (" + (e2.name || "Fehler") + ")."; }
+      return false;
+    }
+  }
+}
+function kamDiagnose(caps) {
+  const ja = x => x ? "✓" : "✗";
+  const hell = caps.exposureCompensation && caps.exposureCompensation.max > caps.exposureCompensation.min || caps.exposureTime && caps.exposureTime.max > caps.exposureTime.min;
+  const fokus = caps.focusDistance && caps.focusDistance.max > caps.focusDistance.min && (caps.focusMode || []).includes("manual");
+  $("#kamInfo").textContent = "Deine Kamera bietet über den Browser: Zoom " + ja(caps.zoom && caps.zoom.max > caps.zoom.min) + " · Helligkeit " + ja(hell) +
+    " · Schärfe " + ja(fokus) + " · Licht " + ja(caps.torch) + ". Ein ✗ heißt: Handy oder Browser geben diese Funktion nicht frei – das lässt sich nicht einstellen.";
+  kamFehlerGemeldet = false;
+}
 function reglerVorbereiten(track, caps) {
+  kamDiagnose(caps || {});
   const z = $("#zoomRegler"), e = $("#belichtungRegler"), f = $("#fokusRegler");
   const zeile = el => el.closest(".regler");
-  const setze = c => track.applyConstraints({ advanced: [c] }).catch(() => {});
+  const setze = c => kamSetze(track, c);
   hellModus = "komp";
   if (track && caps.zoom && caps.zoom.max > caps.zoom.min) {
     z.min = caps.zoom.min; z.max = caps.zoom.max; z.step = caps.zoom.step || 0.1;
@@ -1587,7 +1626,7 @@ function reglerVorbereiten(track, caps) {
 function helligkeitSetzen(wert) {
   const track = kameraTrack(); if (!track) return;
   const caps = track.getCapabilities ? track.getCapabilities() : {};
-  const setze = c => track.applyConstraints({ advanced: [c] }).catch(() => {});
+  const setze = c => kamSetze(track, c);
   if (hellModus === "zeit" && caps.exposureTime) {
     const t = caps.exposureTime, oben = Math.min(t.max, t.min * 300);   // kurze Belichtungszeiten: dunkler
     setze({ exposureMode: "manual", exposureTime: t.min * Math.pow(oben / t.min, wert / 100) });
@@ -1597,18 +1636,22 @@ function belichtungFuerLicht(an) {   // mit Licht dunkler belichten, sonst ist d
   const e = $("#belichtungRegler"), track = kameraTrack();
   if (!track || e.closest(".regler").hidden) return;
   if (hellModus === "zeit") {
-    if (an) { e.value = 15; helligkeitSetzen(15); }
+    if (an) { e.value = 5; helligkeitSetzen(5); }
     else { e.value = 100; track.applyConstraints({ advanced: [{ exposureMode: "continuous" }] }).catch(() => {}); }
-  } else { e.value = an ? Math.max(Number(e.min), -2) : 0; helligkeitSetzen(Number(e.value)); }
+  } else { e.value = an ? Number(e.min) : 0; helligkeitSetzen(Number(e.value)); }   // mit Licht ganz dunkel starten (das Licht selbst lässt sich im Browser nicht dimmen)
+}
+function lichtKnopf() {
+  const b = $("#lichtBtn"); b.classList.toggle("an", lichtAn); b.setAttribute("aria-label", lichtAn ? "Licht aus" : "Licht an");
 }
 function lichtVorbereiten() {
   const btn = $("#lichtBtn");
-  lichtAn = false; btn.textContent = "💡 Licht an";
+  lichtAn = false; lichtKnopf();
   const track = kameraTrack();
   const caps = track && track.getCapabilities ? track.getCapabilities() : {};
   if (caps.focusMode && caps.focusMode.includes("continuous"))
     track.applyConstraints({ advanced: [{ focusMode: "continuous" }] }).catch(() => {});
   reglerVorbereiten(track, caps);
+  $("#kamBtn").hidden = false;
   if (caps.torch) { btn.hidden = false; }
   else {
     btn.hidden = true;
@@ -1620,13 +1663,12 @@ async function lichtUmschalten() {
   const track = kameraTrack(); if (!track) return;
   try {
     await track.applyConstraints({ advanced: [{ torch: !lichtAn }] });
-    lichtAn = !lichtAn;
-    $("#lichtBtn").textContent = lichtAn ? "💡 Licht aus" : "💡 Licht an";
+    lichtAn = !lichtAn; lichtKnopf();
     belichtungFuerLicht(lichtAn);
   } catch (e) { toast("Das Licht lässt sich nicht schalten."); }
 }
 function scanStop() {
-  $("#lichtBtn").hidden = true; lichtAn = false;
+  $("#lichtBtn").hidden = true; $("#kamBtn").hidden = true; $("#kamPanel").hidden = true; lichtAn = false; lichtKnopf();
   document.querySelectorAll("#kamRegler .regler").forEach(x => x.hidden = true);
   scanAktiv = false;
   if (scanTimer) { clearInterval(scanTimer); scanTimer = null; }
@@ -1748,6 +1790,7 @@ $("#btnOnline").onclick = sucheText;
 $("#scanAbbrechen").onclick = scanSchliessen;
 $("#scanManuell").onclick = () => { scanSchliessen(); if (!$("#dlg").open) oeffne(null); };
 $("#lichtBtn").onclick = lichtUmschalten;
+$("#kamBtn").onclick = () => { $("#kamPanel").hidden = !$("#kamPanel").hidden; $("#kamBtn").classList.toggle("an", !$("#kamPanel").hidden); };
 $("#scanDlg").addEventListener("close", scanStop);
 $("#codeSuchen").onclick = () => {
   const code = $("#codeEingabe").value.replace(/\D/g, "");
