@@ -25,15 +25,15 @@
     font: 17px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
     padding-bottom: 90px;
   }
-  header { padding: 26px 0 0; background: linear-gradient(rgba(0,0,0,.55), rgba(0,0,0,0)); }
-  .titel { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 0 16px 18px; text-align: center; }
-  .logo { width: 84px; height: 84px; filter: drop-shadow(0 0 16px rgba(182,85,216,.6)); }
+  header { padding: 14px 0 0; background: linear-gradient(rgba(0,0,0,.55), rgba(0,0,0,0)); }
+  .titel { display: flex; flex-direction: row; justify-content: center; align-items: center; gap: 10px; padding: 0 58px 12px; text-align: center; min-height: 46px; box-sizing: border-box; }
+  .logo { width: 42px; height: 42px; flex: none; filter: drop-shadow(0 0 16px rgba(182,85,216,.6)); }
   .logo .dreh { transform-origin: 50px 50px; animation: drehen 14s linear infinite; }
   @keyframes drehen { to { transform: rotate(360deg); } }
   @media (prefers-reduced-motion: reduce) { .logo .dreh { animation: none; } }
   h1 {
-    margin: 0; font: 400 clamp(1.7rem, 8vw, 2.8rem)/1 var(--titel-schrift); text-transform: uppercase;
-    letter-spacing: .12em; padding-left: .12em; color: #fff; max-width: 100%;
+    margin: 0; font: 400 clamp(1rem, 4.6vw, 1.8rem)/1 var(--titel-schrift); text-transform: uppercase;
+    letter-spacing: .1em; padding-left: .1em; color: #fff; max-width: 100%; white-space: nowrap;
     text-shadow: 0 0 18px rgba(182,85,216,.7), 0 2px 0 #000;
   }
   .leiste {
@@ -52,7 +52,7 @@
   .sortsteuerung button { flex: none; background: var(--bar); }
   header { position: relative; }
   #zahnrad {
-    position: absolute; top: 12px; right: max(12px, env(safe-area-inset-right, 0px)); z-index: 6;
+    position: absolute; top: 8px; right: max(12px, env(safe-area-inset-right, 0px)); z-index: 6;
     width: 46px; height: 46px; padding: 0; border-radius: 50%; display: flex; align-items: center; justify-content: center;
     background: var(--bar); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
   }
@@ -272,6 +272,24 @@
   #formGrid { display: block; margin-top: 4px; }
   .sec { background: #17171c; border: 1px solid #25252c; border-radius: 14px; padding: 12px 14px 8px; margin-bottom: 10px; display: grid; grid-template-columns: 1fr 1fr; gap: 6px 14px; }
   .sec .full { grid-column: 1 / -1; }
+  #filterMehr { grid-column: 1 / -1; }
+  #filterMehr > summary { display: block; cursor: pointer; color: var(--akz-hell); font-size: .85rem; padding: 4px 0; list-style: none; }
+  #filterMehr > summary::-webkit-details-marker { display: none; }
+  #filterMehr > summary::before { content: "▸ "; } #filterMehr[open] > summary::before { content: "▾ "; }
+  #filterMehr .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 12px; margin-top: 4px; }
+  .leer .leerknoepfe { display: flex; flex-direction: column; gap: 8px; margin-top: 16px; max-width: 320px; margin-left: auto; margin-right: auto; }
+  .leer .leerknoepfe button { width: 100%; }
+  .leer p { margin: 0 0 4px; }
+  #backupHinweis { box-sizing: border-box; width: calc(100% - 24px); max-width: 860px; margin: 0 auto 10px; padding: 10px 12px; border-radius: 12px; background: var(--card); border: 1px solid #5b4a1a; color: #e8dcc0; font-size: .85rem; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  #backupHinweis[hidden] { display: none; }
+  #backupHinweis span { flex: 1 1 200px; }
+  #backupHinweis button { padding: 6px 12px; font-size: .82rem; }
+  #hilfeDlg dl { margin: 8px 0; display: grid; grid-template-columns: auto 1fr; gap: 8px 12px; align-items: baseline; }
+  #hilfeDlg dt { font-weight: 700; white-space: nowrap; color: var(--akz-hell); min-width: 2.2em; }
+  #hilfeDlg dd { margin: 0; font-size: .88rem; }
+  #hilfeDlg h3 { margin: 14px 0 0; font-size: .74rem; letter-spacing: .14em; text-transform: uppercase; color: var(--akz-hell); }
+  #hilfeDlg { max-height: 86vh; overflow-y: auto; }
+
   .fchips { display: flex; flex-wrap: wrap; gap: 6px; }
   .fchips button { border-radius: 999px; padding: 5px 11px; font-size: .8rem; background: #1f1f26; border: 1px solid #34343c; color: var(--muted); }
   .fchips button.an { border-color: var(--akz-hell); color: var(--akz-hell); background: #26222c; }
@@ -359,7 +377,7 @@
   .sortsteuerung button { flex: none; background: transparent; border: 0; border-radius: 9px; width: 42px; height: 38px; padding: 0; font-size: 1.2rem; color: var(--text); }
   .sortsteuerung button:hover, .sortsteuerung button:active { background: var(--seg-on); color: #fff; }
   #ansichtWechsel { padding: 0; }
-  #wolke { position: absolute; top: 12px; left: max(12px, env(safe-area-inset-left, 0px)); z-index: 6; width: 46px; height: 46px; padding: 0; border-radius: 50%; font-size: 1.5rem; line-height: 1;
+  #wolke { position: absolute; top: 8px; left: max(12px, env(safe-area-inset-left, 0px)); z-index: 6; width: 46px; height: 46px; padding: 0; border-radius: 50%; font-size: 1.5rem; line-height: 1;
     display: flex; align-items: center; justify-content: center; background: var(--bar); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
   #wolke.ok { color: #6fd08c; }
   #wolke.fehler { color: #ff7a6e; }
@@ -468,17 +486,21 @@
   <details id="filter">
     <summary><span class="fbtn">Filter</span><span id="status"></span></summary>
     <div class="grid">
-      <div><label>Band</label><input data-f="band"></div>
-      <div><label>Album</label><input data-f="album"></div>
       <div><label>Genre</label><select data-f="genre"></select></div>
-      <div><label>Jahr (Pressung)</label><input data-f="jahr" inputmode="numeric"></div>
-      <div><label>Erstveröff. (Album)</label><input data-f="orig_jahr" inputmode="numeric"></div>
-      <div><label>Label</label><input data-f="label"></div>
       <div><label>Format</label><select data-f="format"></select></div>
       <div><label>Zustand</label><select data-f="zustand"></select></div>
       <div><label>Bewertung</label><select data-f="bewertung"></select></div>
-      <div><label>Marke</label><select data-f="marke"></select></div>
+      <div><label>Merkmal</label><select data-f="marke"></select></div>
       <div><label>Cover</label><select data-f="cover"><option value="">alle</option><option value="ohne">ohne Cover</option></select></div>
+      <details id="filterMehr"><summary>Mehr Filter (Band, Album, Jahr, Label)</summary>
+        <div class="grid2">
+          <div><label>Band</label><input data-f="band"></div>
+          <div><label>Album</label><input data-f="album"></div>
+          <div><label>Jahr (Pressung)</label><input data-f="jahr" inputmode="numeric"></div>
+          <div><label>Erstveröff. (Album)</label><input data-f="orig_jahr" inputmode="numeric"></div>
+          <div><label>Label</label><input data-f="label"></div>
+        </div>
+      </details>
       <div class="full row">
         <button id="reset" type="button">Filter zurücksetzen</button>
       </div>
@@ -500,6 +522,7 @@
     <button id="sortRichtung" type="button" aria-label="Aufsteigend sortiert – tippen für absteigend" title="Aufsteigend">↑</button>
       <button id="zufallBtn" type="button" aria-label="Zufallsplatte" title="Zufallsplatte – was höre ich heute?">🎲</button>
       <button id="ansichtWechsel" type="button" aria-label="Ansicht wechseln" title="Ansicht wechseln">▦</button>
+      <button id="hilfeBtn" type="button" aria-label="Hilfe: Was bedeutet was?" title="Hilfe: Was bedeutet was?">?</button>
   </div>
 </div>
 <main id="liste"></main>
@@ -597,7 +620,8 @@
   <div class="eseite" data-seite="ueber" hidden>
     <div class="ekarte">
       <b id="ueberZahlen"></b>
-      <span class="hinweis" id="ueberVersion" style="display:block;margin:2px 0 0">Version 62 (Fotos)</span>
+      <span class="hinweis" id="ueberVersion" style="display:block;margin:2px 0 0">Version 63 (Bedienung aufgeräumt)</span>
+      <div class="aktionen" style="margin:6px 0"><button type="button" id="hilfeAusEinst">? Was bedeutet was?</button></div>
       <p class="hinweis">Die Daten liegen in diesem Browser und – wenn Google Drive verbunden ist – zusätzlich in deinem Drive. Mit „Sync-Datei exportieren“ kannst du jederzeit eine Sicherung ziehen.</p>
     </div>
   </div>
@@ -618,13 +642,13 @@
     </div>
     <div id="dBody" class="t-basis">
       <div class="aktionen suchzeile" data-tab="basis">
-        <button type="button" id="btnScan">📷 Barcode scannen</button>
-        <button type="button" id="btnOnline">🔎 Online suchen</button>
+        <button type="button" id="btnScan">📷 Barcode</button>
+        <button type="button" id="btnOnline">🔎 Online</button>
+        <button type="button" id="btnOcr" title="Cover fotografieren und Text lesen">🖼 Cover lesen</button>
       </div>
-      <div class="scanlinks ocrzeile" data-tab="basis"><button type="button" id="btnOcr" class="linkbtn">🖼 Kein Barcode? Cover fotografieren &amp; Text lesen</button></div>
-      <details class="info" data-tab="basis"><summary>ⓘ Woher kommen die Daten?</summary>
-        <p class="hinweis">Aus MusicBrainz bzw. Discogs – bitte kurz prüfen. „Online suchen“ nutzt Band und/oder Album. * = Pflichtfeld.</p></details>
       <div class="grid" id="formGrid"></div>
+      <details class="info" data-tab="basis"><summary>ⓘ Woher kommen die Daten?</summary>
+        <p class="hinweis">Barcode, Online-Suche und Cover-Lesen füllen die Felder aus MusicBrainz bzw. Discogs – bitte kurz prüfen. „Online“ nutzt Band und/oder Album. * = Pflichtfeld.</p></details>
       <div class="aktionen" data-tab="wert" style="margin:0"><button type="button" id="mwBtn">↻ Marktwert von Discogs holen</button></div>
       <details class="info" data-tab="wert"><summary>ⓘ Hinweise zu Marktwert &amp; Anzahl</summary>
         <p class="hinweis">Marktwert = günstigstes aktuelles Angebot bei Discogs (Richtwert, kein garantierter Verkaufspreis).
@@ -713,6 +737,33 @@
   <div class="scanlinks" style="margin-top:0"><button type="button" id="scanOhneCode" class="linkbtn">🖼 Ohne Barcode: Cover fotografieren</button></div>
   <input id="fotoWahl" type="file" accept="image/*" capture="environment" hidden>
 </dialog>
+<dialog id="hilfeDlg">
+  <div class="dkopf"><h2>Was bedeutet was?</h2><button type="button" id="hilfeX" aria-label="Schließen">✕</button></div>
+  <h3>Symbole oben</h3>
+  <dl>
+    <dt>☁</dt><dd>Google-Drive-Abgleich. Grün = alles abgeglichen, rot = Fehler. Antippen gleicht ab.</dd>
+    <dt>⚙</dt><dd>Einstellungen: Drive, Sicherung/Export, Design, Titellisten.</dd>
+    <dt>↑ ↓</dt><dd>Sortierrichtung umdrehen.</dd>
+    <dt>🎲</dt><dd>Zufallsplatte – „Was höre ich heute?“</dd>
+    <dt>▦ ≡ ☰</dt><dd>Ansicht wechseln: Bilder, Liste, Kompakt.</dd>
+  </dl>
+  <h3>In der Liste</h3>
+  <dl>
+    <dt>!</dt><dd>Es fehlt noch etwas (Cover, Marktwert oder Zustand). Antippen zeigt, was.</dd>
+    <dt>★ 3</dt><dd>Deine Bewertung.</dd>
+    <dt>2×</dt><dd>Du besitzt die Platte mehrfach.</dd>
+    <dt>📷 2</dt><dd>Zusatzfotos (Rückseite, Signatur …) – nur auf diesem Gerät.</dd>
+    <dt>Chips</dt><dd>Genre, Zustand oder Merkmal in einer Karte antippen = danach filtern.</dd>
+  </dl>
+  <h3>Begriffe</h3>
+  <dl>
+    <dt>Pressung</dt><dd>Das Jahr dieser konkreten Ausgabe deiner Platte.</dd>
+    <dt>Erstveröff.</dt><dd>Das Jahr, in dem das Album zum ersten Mal erschien.</dd>
+    <dt>Merkmale</dt><dd>Eigene Etiketten wie „signiert“, „Limited Edition“ oder „Erstpressung“.</dd>
+  </dl>
+  <div class="aktionen"><button type="button" id="hilfeZu" class="primary">Verstanden</button></div>
+</dialog>
+
 <dialog id="fotoDlg" class="fotodlg">
   <img id="fotoBig" alt="">
   <input id="fotoText" type="text" placeholder="Beschriftung (z. B. Signatur von …)" maxlength="80">
@@ -984,13 +1035,22 @@ function render() {
   $("#liste").classList.remove("stat");
   const zeilen = gefiltert().sort(vergleich);
   if (rueckwaerts) zeilen.reverse();
+  { const fm = $("#filterMehr"); if (fm && [...fm.querySelectorAll("[data-f]")].some(e => e.value.trim())) fm.open = true; }
+  backupHinweisZeigen();
   const liste = $("#liste"); liste.innerHTML = ""; liste.classList.toggle("raster", raster); liste.classList.toggle("kompakt", kompakt);
   let ziel = liste;   // in der Listenansicht liegt jede Gruppe in einem eigenen Rahmen, in der Bilderansicht bleibt das Raster flach
   const neueBox = () => { if (raster) return liste; const b = document.createElement("div"); b.className = "gbox"; liste.appendChild(b); return b; };
   if (!zeilen.length) {
     const p = document.createElement("div"); p.className = "leer";
-    p.textContent = sichtbar().length ? "Keine Treffer für diese Filter."
-      : modus === "wunsch" ? "Die Wunschliste ist leer – mit + eine Platte per Barcode oder von Hand hinzufügen." : "Noch keine Platten – mit + die erste anlegen.";
+    if (sichtbar().length) p.textContent = "Keine Treffer für diese Filter.";
+    else {
+      const t = document.createElement("p"); t.textContent = modus === "wunsch" ? "Deine Wunschliste ist noch leer." : "Willkommen! Hier ist noch keine Platte."; p.appendChild(t);
+      const t2 = document.createElement("p"); t2.className = "hinweis"; t2.textContent = "So kommst du am schnellsten zur ersten Platte:"; p.appendChild(t2);
+      const kn = document.createElement("div"); kn.className = "leerknoepfe";
+      [["📷 Barcode scannen", () => scanStart(), true], ["✎ Von Hand eintragen", () => oeffne(null)], ["⤓ Sicherung einspielen", () => $("#dateiWahl").click()], ["? Was bedeutet was?", hilfeAuf]].forEach(([txt, fn, prim]) => {
+        const b = document.createElement("button"); b.type = "button"; b.textContent = txt; if (prim) b.className = "primary"; b.onclick = fn; kn.appendChild(b); });
+      p.appendChild(kn);
+    }
     liste.appendChild(p);
   }
   const gruppieren = !raster && !["preis", "marktwert", "notizen", "katalognr", "barcode", "angelegt", "geaendert"].includes(sortFeld);
@@ -1051,7 +1111,7 @@ function render() {
       const fc = (t, feld, wert, tip) => { t.classList.add("fc"); t.title = tip; { const fe = $('[data-f="' + feld + '"]'); if (fe && fe.value === String(wert)) t.classList.add("akt"); } t.onclick = e => { e.stopPropagation(); filterSetzen(feld, wert); }; return t; };
       if (d.genre) { const t = document.createElement("span"); t.className = "gchip"; t.textContent = d.genre; chips.append(fc(t, "genre", d.genre, "Alle Platten mit diesem Genre zeigen")); }
       if (d.zustand) { const t = document.createElement("span"); t.className = "zchip"; t.textContent = zustandNeu(d.zustand); chips.append(fc(t, "zustand", zustandNeu(d.zustand), "Alle Platten mit diesem Zustand zeigen")); }
-      markenListe(d).forEach(x => { const t = document.createElement("span"); t.className = "mchip"; t.textContent = x; chips.append(fc(t, "marke", x, "Alle Platten mit dieser Marke zeigen")); });
+      markenListe(d).forEach(x => { const t = document.createElement("span"); t.className = "mchip"; t.textContent = x; chips.append(fc(t, "marke", x, "Alle Platten mit diesem Merkmal zeigen")); });
       if (fehlt.length) chips.append(warn());
       const sb = parseInt(d.bewertung, 10);   // Sterne immer zuletzt
       if (sb >= 1 && sb <= 5) { const t = document.createElement("span"); t.className = "sterne"; t.textContent = sterneText(sb) + " " + sb; chips.append(fc(t, "bewertung", String(sb), "Alle Platten mit mindestens " + sb + " Sternen zeigen")); }
@@ -1133,9 +1193,12 @@ function baueFormular() {
     if (k === "zustand") { el.hidden = true; const ch = document.createElement("div"); ch.className = "chips"; ch.id = "zustandChips"; div.appendChild(ch); }
     sec.appendChild(div);
   }
-  const mk = neuerAbschnitt("details", "Marken");
+  { const hj = (id, text) => { const e = grid.querySelector("#f_" + id); if (!e) return; const p = document.createElement("p"); p.className = "hinweis full"; p.textContent = text; e.parentElement.after(p); };
+    hj("format", "Pressung = Jahr dieser Ausgabe. Das Jahr der Erstveröffentlichung steht unter Details.");
+    hj("label", "Erstveröff. = Jahr, in dem das Album zum ersten Mal erschien (kann älter als deine Pressung sein)."); }
+  const mk = neuerAbschnitt("details", "Merkmale");
   mk.insertAdjacentHTML("beforeend", '<div class="full"><div class="chips" id="markenChips"></div>'
-    + '<div class="row" style="gap:8px"><input id="markeNeu" list="markenDatalist" placeholder="Marke hinzufügen" autocomplete="off" style="flex:1 1 auto;min-width:0"><button type="button" id="markeAdd" class="primary" aria-label="Marke hinzufügen">+</button></div>'
+    + '<div class="row" style="gap:8px"><input id="markeNeu" list="markenDatalist" placeholder="Merkmal hinzufügen (z. B. signiert)" autocomplete="off" style="flex:1 1 auto;min-width:0"><button type="button" id="markeAdd" class="primary" aria-label="Merkmal hinzufügen">+</button></div>'
     + '<div class="chips" id="markenVorschlag" style="margin-top:6px"></div></div>');
   const notizSec = [...grid.children].find(e => e.firstChild && e.firstChild.textContent === "Notizen"); if (notizSec) grid.insertBefore(mk, notizSec);
   $("#markeAdd").onclick = () => markeHinzu($("#markeNeu").value);
@@ -1158,7 +1221,7 @@ function baueFormular() {
   const abschnitt = t => [...grid.children].find(e => e.firstChild && e.firstChild.textContent === t);
   const mp = abschnitt("Menge & Preis");
   document.querySelectorAll('#dBody > [data-tab="wert"]').forEach(e => { e.removeAttribute("data-tab"); e.classList.add("full"); if (mp) mp.appendChild(e); });
-  ["Ausgabe", "Marken", "Menge & Preis", "Kauf", "Wunschliste", "Notizen", "Titelliste", "Mehr zur Platte"].forEach(t => { const e = abschnitt(t); if (e) grid.appendChild(e); });
+  ["Ausgabe", "Merkmale", "Menge & Preis", "Kauf", "Wunschliste", "Notizen", "Titelliste", "Mehr zur Platte"].forEach(t => { const e = abschnitt(t); if (e) grid.appendChild(e); });
   const sw = $("#sterneWahl");
   for (let i = 1; i <= 5; i++) {
     const b = document.createElement("button"); b.type = "button"; b.textContent = "★"; b.setAttribute("aria-label", i + " Sterne");
@@ -1203,7 +1266,7 @@ function zustandChips() {
 }
 function fundZeigen() {
   const band = $("#f_band").value.trim(), album = $("#f_album").value.trim(), jahr = $("#f_jahr").value.trim(), mw = $("#f_marktwert").value.trim();
-  $("#fundBand").textContent = band || (aktuelleUid ? "Ohne Bandnamen" : "Neue Platte");
+  $("#fundBand").textContent = band || (aktuelleUid ? "Ohne Bandnamen" : "Noch kein Name");
   $("#fundAlbum").textContent = [album, jahr].filter(Boolean).join(" · ");
   $("#fundWert").textContent = mw ? "≈ " + mw + " € Marktwert" : "";
 }
@@ -1217,7 +1280,7 @@ function wunschZeigen() {
   $("#wunschBox").parentElement.hidden = !formWunsch;
   $("#wunschBox").style.display = formWunsch ? "" : "none";
   $("#kaufBox").style.display = formWunsch && aktuelleUid ? "" : "none";
-  $("#dlgTitel").textContent = aktuelleUid ? (formWunsch ? "Wunschlisten-Platte bearbeiten" : "Platte bearbeiten") : (formWunsch ? "Neu auf der Wunschliste" : "Neue Platte");
+  $("#dlgTitel").textContent = aktuelleUid ? (formWunsch ? "Wunschliste bearbeiten" : "Bearbeiten") : (formWunsch ? "Neu auf der Wunschliste" : "Neue Platte");
 }
 function oeffne(uid) {
   aktuelleUid = uid || null; formNeuUid = uid ? null : neueUid(); dlgGespeichert = false; fotoGeaendert = false; fotoArt = "Rückseite";
@@ -1237,9 +1300,30 @@ function oeffne(uid) {
   formCover = { foto: d ? d.cover_foto || "" : "", mbid: d ? d.cover_mbid || "" : "", discogs: d ? d.discogs_id || "" : "" };
   coverVorschau();
   $("#loeschen").style.display = d ? "" : "none";
-  $(".ocrzeile").style.display = uid ? "none" : "";   // Cover-Foto-Texterkennung nur beim Neuanlegen
+  $("#btnOcr").style.display = uid ? "none" : "";   // Cover-Foto-Texterkennung nur beim Neuanlegen
   zustandChips(); fundZeigen(); dlgReiter("basis"); fotoArtenZeichnen(); fotoGalerie();
   $("#dlg").showModal();
+}
+// ---------- Hilfe, Startbildschirm, Sicherungs-Hinweis ----------
+const hilfeAuf = () => { if (!$("#hilfeDlg").open) $("#hilfeDlg").showModal(); };
+$("#hilfeBtn").onclick = hilfeAuf; $("#hilfeAusEinst").onclick = hilfeAuf;
+$("#hilfeX").onclick = $("#hilfeZu").onclick = () => $("#hilfeDlg").close();
+const BACKUP_KEY = "plattenarchiv-backup", BACKUP_HINT = "plattenarchiv-backup-hint";
+function backupHinweisZeigen() {
+  let box = $("#backupHinweis");
+  if (!box) { box = document.createElement("div"); box.id = "backupHinweis"; box.hidden = true; $("#liste").before(box); }
+  const TAG = 86400000, jetzt = Date.now();
+  let zeit = 0, spaeter = 0;
+  try { zeit = Math.max(Number(localStorage.getItem(BACKUP_KEY)) || 0, Number(localStorage.getItem("plattenarchiv-drive-zeit")) || 0); spaeter = Number(localStorage.getItem(BACKUP_HINT)) || 0; } catch (e) {}
+  const faellig = modus !== "statistik" && daten.filter(d => !d.geloescht).length >= 5 && jetzt - zeit > 30 * TAG && jetzt - spaeter > 14 * TAG;
+  box.hidden = !faellig; if (!faellig) return;
+  box.innerHTML = "";
+  const t = document.createElement("span");
+  t.textContent = "💾 " + (zeit ? "Letzte Sicherung vor " + Math.floor((jetzt - zeit) / TAG) + " Tagen." : "Noch keine Sicherung gemacht.") + " Zusatzfotos sind darin nicht enthalten.";
+  const a = document.createElement("button"); a.type = "button"; a.className = "primary"; a.textContent = "Jetzt sichern"; a.onclick = () => $("#syncExport").click();
+  const b = document.createElement("button"); b.type = "button"; b.textContent = "Später";
+  b.onclick = () => { try { localStorage.setItem(BACKUP_HINT, String(Date.now())); } catch (e) {} box.hidden = true; };
+  box.append(t, a, b);
 }
 // ---------- Doppelte erkennen ----------
 // Barcodes vergleichen ohne führende Nullen (UPC-12 und EAN-13 desselben Codes sind gleich).
@@ -1418,7 +1502,7 @@ function renderStatistik() {
   }
   balken("Gekauft bei", zaehle(d => d.haendler), 6);
   { const mm = new Map(); for (const d of S) for (const x of markenListe(d)) { const e = mm.get(x) || { n: 0, w: 0 }; e.n += stk(d); e.w += (zahlKurz(d.marktwert) || 0) * stk(d); mm.set(x, e); }
-    if (mm.size) { const k = karte("Marken"); [...mm.entries()].sort((a, b) => b[1].n - a[1].n).slice(0, 10).forEach(([n, e]) => { const r = el("div", "balken"); r.append(el("span", "", n), el("i"), el("span", "n", e.n + (e.w ? " · ≈ " + Math.round(e.w) + " €" : ""))); k.append(r); }); } }
+    if (mm.size) { const k = karte("Merkmale"); [...mm.entries()].sort((a, b) => b[1].n - a[1].n).slice(0, 10).forEach(([n, e]) => { const r = el("div", "balken"); r.append(el("span", "", n), el("i"), el("span", "n", e.n + (e.w ? " · ≈ " + Math.round(e.w) + " €" : ""))); k.append(r); }); } }
   const ver = S.concat(W).filter(d => d.mw_alt && zahlKurz(d.marktwert) != null && zahlKurz(d.mw_alt) != null)
     .map(d => ({ d, delta: zahlKurz(d.marktwert) - zahlKurz(d.mw_alt) })).filter(x => Math.abs(x.delta) >= 0.01);
   if (ver.length) {
@@ -1474,7 +1558,7 @@ function baueFilter() {
     t.setAttribute("aria-label", rueckwaerts ? "Absteigend sortiert – tippen für aufsteigend" : "Aufsteigend sortiert – tippen für absteigend");
     render();
   };
-  document.querySelectorAll("#modus button").forEach(b => b.onclick = () => { modus = b.dataset.m; render(); });
+  document.querySelectorAll("#modus button").forEach(b => b.onclick = () => { modus = b.dataset.m; $("#filter").open = false; render(); });
   const aw = $("#ansichtWechsel");
   const ansichtZeigen = () => { aw.textContent = raster ? "≡" : kompakt ? "☰" : "▦"; aw.title = aw.ariaLabel = raster ? "Zur Kompakt-Ansicht" : kompakt ? "Zur Listenansicht" : "Zur Bilderansicht"; };
   ansichtZeigen();
@@ -1515,6 +1599,8 @@ $("#syncExport").onclick = () => {
   const records = syncRecords();
   dateiAusgeben("plattenarchiv-sync.json",
     JSON.stringify({ format: "plattenarchiv-sync", version: 1, records }), "application/json");
+  try { localStorage.setItem(BACKUP_KEY, String(Date.now())); } catch (e) {}
+  backupHinweisZeigen();
 };
 $("#syncImport").onclick = () => $("#dateiWahl").click();
 $("#dateiWahl").onchange = async e => {
