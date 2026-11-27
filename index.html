@@ -284,10 +284,14 @@
   .dupkarte.on { border-color: var(--akz-hell); background: #20202a; }
   .dupkarte .behalten { color: var(--akz-hell); font-size: .74rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
   #dupDlg .aktionen { flex-direction: column; margin-top: 10px; } #dupDlg .aktionen button { width: 100%; }
+  @media (max-width: 480px) { .sortzeile label { display: none; } .sortwahl { margin-left: 0; } }
   @media (max-width: 340px) {
     .sortzeile label { display: none; } .logo { display: none; } .titel { padding: 0 52px 12px; }
     #status { font-size: .7rem; padding: 5px 8px; gap: 4px; } #status b { font-size: .85rem; }
   }
+  #galDlg, #impDlg { max-height: 90vh; overflow-y: auto; }
+  #galBig { width: 100%; max-height: 62vh; object-fit: contain; border-radius: 10px; background: #000; display: block; margin-bottom: 8px; }
+  #impInfo b { color: var(--akz-hell); } #impInfo ul { margin: 4px 0 0; padding-left: 18px; color: var(--muted); font-size: .82rem; }
   #filterMehr { grid-column: 1 / -1; }
   #filterMehr > summary { display: block; cursor: pointer; color: var(--akz-hell); font-size: .85rem; padding: 4px 0; list-style: none; }
   #filterMehr > summary::-webkit-details-marker { display: none; }
@@ -538,6 +542,7 @@
     <button id="sortRichtung" type="button" aria-label="Aufsteigend sortiert – tippen für absteigend" title="Aufsteigend">↑</button>
       <button id="zufallBtn" type="button" aria-label="Zufallsplatte" title="Zufallsplatte – was höre ich heute?">🎲</button>
       <button id="ansichtWechsel" type="button" aria-label="Ansicht wechseln" title="Ansicht wechseln">▦</button>
+      <button id="galBtn" type="button" aria-label="Foto-Galerie" title="Foto-Galerie: alle Rückseiten, Signaturen …">📷</button>
       <button id="hilfeBtn" type="button" aria-label="Hilfe: Was bedeutet was?" title="Hilfe: Was bedeutet was?">?</button>
   </div>
 </div>
@@ -616,8 +621,15 @@
         <button type="button" id="syncImport">Sync-Datei importieren</button>
       </div>
       <button type="button" id="csvExport">CSV exportieren</button>
+      <button type="button" id="csvImport" style="margin-top:8px">CSV importieren</button>
+      <input id="csvWahl" type="file" accept=".csv,text/csv,text/plain,.txt" hidden>
+      <div class="ebtns" style="margin-top:8px">
+        <button type="button" id="fotoExport">Fotos sichern</button>
+        <button type="button" id="fotoImport">Fotos einspielen</button>
+      </div>
+      <input id="fotoDatei" type="file" accept=".json,application/json" hidden>
       <button type="button" id="dupStart" style="margin-top:8px">Dubletten prüfen</button>
-      <p class="hinweis">Die Sync-Datei ist mit der Desktop-Version kompatibel. Beim Import gewinnt jeweils die neuere Änderung.</p>
+      <p class="hinweis">Die Sync-Datei ist mit der Desktop-Version kompatibel. Beim Import gewinnt jeweils die neuere Änderung. „Fotos sichern“ speichert die Zusatzfotos (Rückseite, Signatur …) in einer eigenen Datei, denn sie liegen nur auf diesem Gerät.</p>
       <input id="dateiWahl" type="file" accept=".json,application/json" hidden>
     </div>
   </div>
@@ -637,7 +649,7 @@
   <div class="eseite" data-seite="ueber" hidden>
     <div class="ekarte">
       <b id="ueberZahlen"></b>
-      <span class="hinweis" id="ueberVersion" style="display:block;margin:2px 0 0">Version 68 (Sortier-Menü am Handy repariert)</span>
+      <span class="hinweis" id="ueberVersion" style="display:block;margin:2px 0 0">Version 69 (Galerie, CSV-Import, Foto-Sicherung)</span>
       <div class="aktionen" style="margin:6px 0"><button type="button" id="hilfeAusEinst">? Was bedeutet was?</button></div>
       <p class="hinweis">Die Daten liegen in diesem Browser und – wenn Google Drive verbunden ist – zusätzlich in deinem Drive. Mit „Sync-Datei exportieren“ kannst du jederzeit eine Sicherung ziehen.</p>
     </div>
@@ -719,6 +731,36 @@
   <div class="aktionen" style="justify-content:center">
     <button type="button" id="zufallNochmal" class="primary">🎲 Nochmal würfeln</button>
     <button type="button" id="zufallOeffnen">Ansehen</button>
+  </div>
+</dialog>
+<dialog id="galDlg">
+  <div class="dkopf"><h2>Fotos</h2><button type="button" id="galX" aria-label="Schließen">✕</button></div>
+  <div class="fchips" id="galArten" style="margin-bottom:8px"></div>
+  <div class="fgal" id="galRaster"></div>
+  <p class="hinweis" id="galLeer" hidden style="text-align:center">Noch keine Zusatzfotos. Du findest sie beim Bearbeiten einer Platte im Reiter „Foto“.</p>
+</dialog>
+<dialog id="galSicht" class="fotodlg">
+  <img id="galBig" alt="">
+  <p id="galTitel" style="margin:0 0 6px;font-size:.9rem"></p>
+  <div class="aktionen">
+    <button type="button" id="galPrev" aria-label="Vorheriges">‹</button>
+    <button type="button" id="galNext" aria-label="Nächstes">›</button>
+    <span class="spacer"></span>
+    <button type="button" id="galZur">Zur Platte</button>
+    <button type="button" id="galZu" class="primary">Fertig</button>
+  </div>
+</dialog>
+<dialog id="impDlg">
+  <div class="dkopf"><h2>CSV importieren</h2><button type="button" id="impX" aria-label="Schließen">✕</button></div>
+  <div id="impInfo" style="font-size:.9rem;line-height:1.5"></div>
+  <div class="grid" style="margin-top:8px">
+    <div class="full"><label for="impDup">Bei Dubletten</label>
+      <select id="impDup"><option value="skip">überspringen</option><option value="add">trotzdem anlegen</option></select></div>
+    <div class="full"><label style="display:flex;gap:8px;align-items:center"><input type="checkbox" id="impWunsch" style="width:18px;height:18px;flex:none;padding:0"> Auf die Wunschliste importieren</label></div>
+  </div>
+  <div class="aktionen" style="margin-top:10px">
+    <button type="button" id="impAbbr">Abbrechen</button>
+    <button type="button" id="impGo" class="primary">Importieren</button>
   </div>
 </dialog>
 <dialog id="dupDlg">
@@ -1445,6 +1487,165 @@ $("#dupMerge").onclick = () => { const p = dupListe[0]; if (!p) return; dupZusam
 $("#dupBeide").onclick = () => { const p = dupListe[0]; if (!p) return; const ign = dupIgnor(); ign.add(dupKey(p.a, p.b));
   try { localStorage.setItem(DUP_IGNOR, JSON.stringify([...ign])); } catch (e) {} dupListe = dupPaare(); dupZeigen(); };
 $("#dupSpaeter").onclick = $("#dupX").onclick = () => $("#dupDlg").close();
+// ---------- Foto-Galerie, CSV-Import, Foto-Backup ----------
+let galListe = [], galI = 0, galUrls = [], galArt = "";
+async function galOeffnen() {
+  const meta = fotoMeta(), lebend = new Map(alleAktiv().map(d => [d.uid, d]));
+  galListe = []; for (const [uid, arr] of Object.entries(meta)) { const d = lebend.get(uid); if (d) arr.forEach(f => galListe.push({ ...f, uid, d })); }
+  galListe.sort((a, b) => String(a.d.band).localeCompare(String(b.d.band), "de") || String(a.d.album).localeCompare(String(b.d.album), "de"));
+  galUrls.forEach(u => URL.revokeObjectURL(u)); galUrls = [];
+  let alle = []; try { alle = await idb("readonly", st => st.getAll()); } catch (e) {}
+  const byId = new Map(alle.map(r => [r.id, r])); galListe.forEach(f => { const r = byId.get(f.id); if (r) { f.thumbUrl = URL.createObjectURL(r.thumb || r.blob); galUrls.push(f.thumbUrl); } });
+  galArt = ""; galZeichnen(); if (!$("#galDlg").open) $("#galDlg").showModal();
+}
+function galZeichnen() {
+  const arten = [...new Set(galListe.map(f => f.art))], box = $("#galArten"); box.innerHTML = "";
+  [["", "Alle"], ...arten.map(a => [a, a])].forEach(([v, t]) => { const b = document.createElement("button"); b.type = "button"; b.textContent = t; b.className = v === galArt ? "an" : ""; b.onclick = () => { galArt = v; galZeichnen(); }; box.appendChild(b); });
+  box.hidden = arten.length < 2;
+  const r = $("#galRaster"); r.innerHTML = ""; const sicht = galListe.filter(f => !galArt || f.art === galArt);
+  $("#galLeer").hidden = galListe.length > 0;
+  sicht.forEach(f => { const b = document.createElement("button"); b.type = "button"; b.className = "ft";
+    if (f.thumbUrl) { const im = document.createElement("img"); im.src = f.thumbUrl; im.alt = f.d.band; b.appendChild(im); }
+    const sp = document.createElement("span"); sp.textContent = f.d.band + " · " + (f.text || f.art); b.appendChild(sp);
+    b.onclick = () => galZeigen(sicht, sicht.indexOf(f)); r.appendChild(b); });
+}
+let galSicht = [], galSichtI = 0, galBigUrl = "";
+async function galZeigen(liste, i) {
+  galSicht = liste; galSichtI = (i + liste.length) % liste.length; const f = liste[galSichtI];
+  let r = null; try { r = await idb("readonly", st => st.get(f.id)); } catch (e) {}
+  if (galBigUrl) URL.revokeObjectURL(galBigUrl); galBigUrl = r ? URL.createObjectURL(r.blob) : ""; $("#galBig").src = galBigUrl;
+  $("#galTitel").textContent = f.d.band + " – " + f.d.album + " · " + f.art + (f.text ? ": " + f.text : "");
+  $("#galPrev").style.visibility = $("#galNext").style.visibility = liste.length > 1 ? "" : "hidden";
+  if (!$("#galSicht").open) $("#galSicht").showModal();
+}
+$("#galBtn").onclick = galOeffnen;
+$("#galX").onclick = () => $("#galDlg").close();
+$("#galDlg").addEventListener("close", () => { galUrls.forEach(u => URL.revokeObjectURL(u)); galUrls = []; });
+$("#galPrev").onclick = () => galZeigen(galSicht, galSichtI - 1);
+$("#galNext").onclick = () => galZeigen(galSicht, galSichtI + 1);
+$("#galZu").onclick = () => $("#galSicht").close();
+$("#galSicht").addEventListener("close", () => { if (galBigUrl) { URL.revokeObjectURL(galBigUrl); galBigUrl = ""; } $("#galBig").removeAttribute("src"); });
+$("#galZur").onclick = () => {
+  const f = galSicht[galSichtI]; if (!f) return; $("#galSicht").close(); $("#galDlg").close();
+  const ed = $("#einstDlg"); if (ed && ed.open) ed.close();
+  oeffne(f.uid); dlgReiter("foto");
+};
+
+// CSV-Import
+const CSV_ALIAS = {
+  band: ["band", "bandkünstler", "künstler", "kuenstler", "artist", "interpret", "musiker"],
+  album: ["album", "titel", "title", "albumtitel", "release"],
+  genre: ["genre", "stil", "style"],
+  jahr: ["jahr", "jahrpressung", "year", "pressung", "pressjahr"],
+  orig_jahr: ["erstveröffalbum", "erstveröff", "erstveröffentlichung", "origjahr", "originaljahr", "originalyear", "erscheinungsjahr", "released"],
+  label: ["label", "plattenlabel"], format: ["format", "typ"], zustand: ["zustand", "condition", "mediacondition"],
+  katalognr: ["katalognr", "katalognummer", "katalog", "catno", "catalog", "catalognumber"],
+  barcode: ["barcode", "ean", "upc", "strichcode"], land: ["land", "country"],
+  anzahl: ["anzahl", "menge", "stück", "stueck", "count", "quantity"],
+  preis: ["ekpreis", "preis", "price", "gekauftfür", "einkaufspreis"],
+  marktwert: ["marktwertca", "marktwert", "wert", "value"], notizen: ["notizen", "notiz", "notes", "bemerkung", "kommentar"],
+  kaufdatum: ["gekauftam", "kaufdatum", "datum"], haendler: ["gekauftbei", "händler", "haendler", "shop"], marken: ["marken", "merkmale", "tags"]
+};
+const csvSpalte = h => { const n = String(h).toLowerCase().replace(/[^a-z0-9äöüß]/g, ""); for (const [k, l] of Object.entries(CSV_ALIAS)) if (l.includes(n)) return k; return null; };
+function csvParsen(text) {
+  text = text.replace(/^﻿/, "");
+  const kopf = text.split(/\r?\n/, 1)[0], delim = [";", ",", "\t"].map(d => [d, kopf.split(d).length]).sort((a, b) => b[1] - a[1])[0][0];
+  const zeilen = []; let z = [], c = "", q = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (q) { if (ch === '"') { if (text[i + 1] === '"') { c += '"'; i++; } else q = false; } else c += ch; }
+    else if (ch === '"') q = true;
+    else if (ch === delim) { z.push(c); c = ""; }
+    else if (ch === "\n" || ch === "\r") { if (ch === "\r" && text[i + 1] === "\n") i++; z.push(c); c = ""; if (z.some(x => x.trim())) zeilen.push(z); z = []; }
+    else c += ch;
+  }
+  z.push(c); if (z.some(x => x.trim())) zeilen.push(z);
+  return zeilen;
+}
+let impNeu = [], impDup = [];
+function impAuswerten(zeilen) {
+  const kopf = zeilen[0].map(csvSpalte), unbekannt = zeilen[0].filter((h, i) => !kopf[i] && String(h).trim());
+  const out = { neu: [], dup: [], ungueltig: 0, genreFehlt: 0, unbekannt, spalten: kopf.filter(Boolean).length };
+  if (!kopf.includes("band") || !kopf.includes("album")) { out.fehler = "Es wurde keine Spalte für Band und Album erkannt. Die erste Zeile der Datei muss Überschriften wie „Band“ und „Album“ enthalten."; return out; }
+  const bekannt = alleAktiv().map(d => ({ bc: ziffern(d.barcode), n: norm(d.band).trim() + "|" + norm(d.album).trim(), w: d.wunsch === "1" })), sehen = new Set();
+  for (const r of zeilen.slice(1)) {
+    const w = {}; KEYS.forEach(k => w[k] = ""); w.kaufdatum = ""; w.haendler = ""; w.marken = "";
+    kopf.forEach((k, i) => { if (k) w[k] = String(r[i] ?? "").trim(); });
+    if (!w.band || !w.album) { out.ungueltig++; continue; }
+    if (!/^\d{4}$/.test(w.jahr)) w.jahr = ""; if (!/^\d{4}$/.test(w.orig_jahr)) w.orig_jahr = "";
+    w.zustand = zustandNeu(w.zustand); w.anzahl = /^[1-9]\d*$/.test(w.anzahl) ? w.anzahl : "1";
+    const m = /^(\d{1,2})\.(\d{1,2})\.(\d{4})$/.exec(w.kaufdatum); if (m) w.kaufdatum = m[3] + "-" + m[2].padStart(2, "0") + "-" + m[1].padStart(2, "0");
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(w.kaufdatum)) w.kaufdatum = "";
+    if (!w.genre) { w.genre = "Unbekannt"; out.genreFehlt++; }
+    const bc = ziffern(w.barcode), n = norm(w.band).trim() + "|" + norm(w.album).trim();
+    const istDup = bekannt.some(b => (bc && b.bc === bc) || (b.n === n && !(bc && b.bc && b.bc !== bc))) || sehen.has(bc ? "b" + bc : "n" + n);
+    sehen.add(bc ? "b" + bc : "n" + n);
+    (istDup ? out.dup : out.neu).push(w);
+  }
+  out.genreFehlt = out.neu.filter(w => w.genre === "Unbekannt").length;
+  return out;
+}
+$("#csvImport").onclick = () => { $("#csvWahl").value = ""; $("#csvWahl").click(); };
+$("#csvWahl").onchange = async e => {
+  const f = e.target.files[0]; if (!f) return;
+  let text = ""; try { const buf = await f.arrayBuffer(); text = new TextDecoder("utf-8").decode(buf); if (text.includes("\uFFFD")) text = new TextDecoder("windows-1252").decode(buf); }
+  catch (err) { toast("Datei konnte nicht gelesen werden."); return; }
+  const zeilen = csvParsen(text); if (zeilen.length < 2) { toast("Die Datei enthält keine Datenzeilen."); return; }
+  const a = impAuswerten(zeilen), info = $("#impInfo"); info.innerHTML = "";
+  const add = (html) => { const p = document.createElement("p"); p.style.margin = "0 0 6px"; p.innerHTML = html; info.appendChild(p); return p; };
+  if (a.fehler) { add(a.fehler.replace(/</g, "&lt;")); $("#impGo").hidden = true; $("#impDup").parentElement.hidden = $("#impWunsch").closest(".full").hidden = true; }
+  else {
+    $("#impGo").hidden = false; $("#impDup").parentElement.hidden = $("#impWunsch").closest(".full").hidden = false;
+    add("<b>" + a.neu.length + "</b> neue Platten" + (a.dup.length ? ", <b>" + a.dup.length + "</b> mögliche Dubletten" : "") + (a.ungueltig ? ", " + a.ungueltig + " Zeilen ohne Band/Album werden übersprungen" : "") + ".");
+    const ul = document.createElement("ul");
+    a.neu.slice(0, 3).forEach(w => { const li = document.createElement("li"); li.textContent = w.band + " – " + w.album; ul.appendChild(li); });
+    if (a.neu.length > 3) { const li = document.createElement("li"); li.textContent = "… und " + (a.neu.length - 3) + " weitere"; ul.appendChild(li); }
+    info.appendChild(ul);
+    if (a.genreFehlt) add("Bei " + a.genreFehlt + " Platten fehlt das Genre – es wird als „Unbekannt“ eingetragen.");
+    if (a.unbekannt.length) add("Nicht erkannte Spalten (werden ignoriert): " + a.unbekannt.join(", ").replace(/</g, "&lt;"));
+    $("#impWunsch").checked = modus === "wunsch";
+  }
+  impNeu = a.neu; impDup = a.dup; if (!$("#impDlg").open) $("#impDlg").showModal();
+};
+$("#impAbbr").onclick = $("#impX").onclick = () => $("#impDlg").close();
+$("#impGo").onclick = () => {
+  const liste = [...impNeu, ...($("#impDup").value === "add" ? impDup : [])]; if (!liste.length) { toast("Nichts zu importieren."); return; }
+  const wunsch = $("#impWunsch").checked ? "1" : "", jetzt = Date.now();
+  liste.forEach((w, i) => daten.push({ uid: neueUid(), geaendert: jetzt + i, geloescht: false, ...w, wunsch, angelegt: String(jetzt + i) }));
+  speichern(); render(); $("#impDlg").close(); const ed = $("#einstDlg"); if (ed && ed.open) ed.close();
+  toast(liste.length + (liste.length === 1 ? " Platte" : " Platten") + " importiert.");
+};
+
+// Foto-Backup
+const blobZuUrl = b => new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(b); });
+$("#fotoExport").onclick = async () => {
+  let alle; try { alle = await idb("readonly", st => st.getAll()); } catch (e) { toast("Fotos konnten nicht gelesen werden."); return; }
+  const byId = new Map(alle.map(r => [r.id, r])), liste = [];
+  for (const [uid, arr] of Object.entries(fotoMeta())) for (const f of arr) {
+    const r = byId.get(f.id); if (!r) continue; const d = daten.find(x => x.uid === uid);
+    liste.push({ uid, id: f.id, art: f.art, text: f.text || "", titel: d ? d.band + " – " + d.album : "", data: await blobZuUrl(r.blob) });
+  }
+  if (!liste.length) { toast("Noch keine Zusatzfotos vorhanden."); return; }
+  await dateiAusgeben("plattenarchiv-fotos.json", JSON.stringify({ format: "plattenarchiv-fotos", version: 1, fotos: liste }), "application/json");
+  toast(liste.length + " Fotos gesichert.");
+};
+$("#fotoImport").onclick = () => { $("#fotoDatei").value = ""; $("#fotoDatei").click(); };
+$("#fotoDatei").onchange = async e => {
+  const f = e.target.files[0]; if (!f) return;
+  let j; try { j = JSON.parse(await f.text()); } catch (err) { toast("Das ist keine gültige Foto-Sicherung."); return; }
+  if (!j || j.format !== "plattenarchiv-fotos" || !Array.isArray(j.fotos)) { toast("Das ist keine Foto-Sicherung des Plattenarchivs."); return; }
+  let vorhanden = new Set(); try { vorhanden = new Set((await idb("readonly", st => st.getAllKeys()))); } catch (err) {}
+  const meta = fotoMeta(); let neu = 0;
+  for (const x of j.fotos) {
+    if (!x || !x.id || !x.uid || !x.data || vorhanden.has(x.id)) continue;
+    try {
+      const blob = await (await fetch(x.data)).blob(), thumb = await bildVerkleinern(blob, 240, 0.7);
+      await idb("readwrite", st => st.put({ id: x.id, uid: x.uid, blob, thumb }));
+      (meta[x.uid] = meta[x.uid] || []).push({ id: x.id, art: x.art || "Rückseite", text: x.text || "" }); neu++;
+    } catch (err) {}
+  }
+  fotoMetaSpeichern(meta); render(); toast(neu ? neu + " Fotos eingespielt." : "Alle Fotos waren schon vorhanden.");
+};
 // ---------- Doppelte erkennen ----------
 // Barcodes vergleichen ohne führende Nullen (UPC-12 und EAN-13 desselben Codes sind gleich).
 const ziffern = x => String(x || "").replace(/\D/g, "").replace(/^0+/, "");
