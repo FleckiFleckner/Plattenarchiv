@@ -446,7 +446,7 @@
   <div class="eseite" data-seite="ueber" hidden>
     <div class="ekarte">
       <b id="ueberZahlen"></b>
-      <span class="hinweis" id="ueberVersion" style="display:block;margin:2px 0 0">Version 38 (Fehlerbericht bei der Barcode-Suche)</span>
+      <span class="hinweis" id="ueberVersion" style="display:block;margin:2px 0 0">Version 39 (Scan prüft Code doppelt)</span>
       <p class="hinweis">Die Daten liegen in diesem Browser und – wenn Google Drive verbunden ist – zusätzlich in deinem Drive. Mit „Sync-Datei exportieren“ kannst du jederzeit eine Sicherung ziehen.</p>
     </div>
   </div>
@@ -1700,10 +1700,15 @@ function scanStop() {
   $("#video").srcObject = null;
 }
 function scanSchliessen() { scanStop(); if ($("#scanDlg").open) $("#scanDlg").close(); }
+let letzterCode = "", letzteZeit = 0;
 function gefunden(code) {
   if (!scanAktiv) return;
   const nummer = String(code).replace(/\D/g, "");
   if (!barcodeGueltig(nummer)) { $("#scanStatus").textContent = "Gelesen: " + nummer + " – das ist kein gültiger Plattenbarcode, ich suche weiter …"; return; }
+  // Fehllesungen (z. B. 888 → 822) vermeiden: derselbe Code muss zweimal kurz hintereinander gelesen werden
+  const jetzt = Date.now();
+  if (nummer !== letzterCode || jetzt - letzteZeit > 2500) { letzterCode = nummer; letzteZeit = jetzt; $("#scanStatus").textContent = "Gelesen: " + nummer + " – prüfe noch einmal …"; return; }
+  letzterCode = "";
   scanSchliessen();
   toast("Code erkannt: " + nummer);
   sucheBarcode(nummer);
