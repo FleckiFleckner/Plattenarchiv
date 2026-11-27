@@ -653,7 +653,7 @@
   <div class="eseite" data-seite="ueber" hidden>
     <div class="ekarte">
       <b id="ueberZahlen"></b>
-      <span class="hinweis" id="ueberVersion" style="display:block;margin:2px 0 0">Version 71 (Cover lesen: Kamera & neues Symbol)</span>
+      <span class="hinweis" id="ueberVersion" style="display:block;margin:2px 0 0">Version 72 (Titelliste automatisch)</span>
       <div class="aktionen" style="margin:6px 0"><button type="button" id="hilfeAusEinst">? Was bedeutet was?</button></div>
       <p class="hinweis">Die Daten liegen in diesem Browser und – wenn Google Drive verbunden ist – zusätzlich in deinem Drive. Mit „Sync-Datei exportieren“ kannst du jederzeit eine Sicherung ziehen.</p>
     </div>
@@ -1317,7 +1317,7 @@ function baueFormular() {
   };
 }
 function dlgReiter(t) {
-  $("#dBody").className = "t-" + t;
+  $("#dBody").className = "t-" + t; if (t === "titel") tlAuto();
   document.querySelectorAll("#dtabs button").forEach(b => b.classList.toggle("on", b.dataset.t === t));
 }
 document.querySelectorAll("#dtabs button").forEach(b => b.onclick = () => dlgReiter(b.dataset.t));
@@ -1372,7 +1372,7 @@ function oeffne(uid) {
   $("#f_zielpreis").value = d ? d.zielpreis || "" : "";
   $("#f_kaufdatum").value = d ? d.kaufdatum || "" : ""; $("#f_haendler").value = d ? d.haendler || "" : "";
   formMarken = d ? markenListe(d) : []; $("#markeNeu").value = ""; markenZeichnen();
-  formTracks = d ? d.tracklist || "" : ""; tlZeigen();
+  formTracks = d ? d.tracklist || "" : ""; tlVersuch = false; tlZeigen();
   formHoer = { n: d ? d.gehoert_n || "" : "", zeit: d ? d.gehoert_zeit || "" : "" }; hoerZeigen();
   wunschZeigen();
   const zsel = $("#f_zustand");
@@ -2425,6 +2425,7 @@ async function uebernehmen(r, code) {
   if (mw.id) formCover.discogs = mw.id;
   if (mw.wert) $("#f_marktwert").value = mw.wert;
   coverVorschau();
+  tlAuto(r.mbid);   // Titelliste gleich mitladen
   toast((r.genre ? "Daten eingetragen – bitte prüfen, Zustand und EK-Preis ergänzen." : "Daten eingetragen – Genre bitte selbst ergänzen.") +
     (mw.wert ? " Marktwert ca. " + mw.wert + " €." : " " + mw.fehler));
 }
@@ -2987,6 +2988,22 @@ function tlZeigen() {
   box.appendChild(ul);
   info.append("Quelle: " + (quelle || "?") + " · " + liste.length + " Titel · ", knopf("Neu laden", tlFormLaden));
   tlLinksSetzen();
+}
+var tlVersuch = false;
+async function tlAuto(mbid) {   // Titelliste automatisch ins Formular laden (einmal je Dialog), nur bei eindeutigem Treffer
+  if (tlVersuch || formTracks) return;
+  const band = $("#f_band").value.trim(), album = $("#f_album").value.trim(); if (!band || !album) return;
+  tlVersuch = true; const wer = formNeuUid || aktuelleUid; $("#tlInfo").textContent = "Suche Titelliste …";
+  try {
+    let r = null;
+    if (formCover.discogs) { try { r = await tlAusDiscogs(formCover.discogs); } catch (e) {} }
+    if ((!r || !r.liste.length) && mbid) { try { r = await tlAusMB(mbid); } catch (e) {} }
+    if (!r || !r.liste.length) r = await tlHolen({ band, album, discogsId: "" });
+    if (r && r.liste && r.liste.length && !formTracks && wer === (formNeuUid || aktuelleUid) && $("#dlg").open) {
+      formTracks = tlKodieren(r.quelle, r.liste); toast(r.liste.length + " Titel geladen (Reiter „Titel“).");
+    }
+  } catch (e) {}
+  tlZeigen();
 }
 async function tlFormLaden() {
   const band = $("#f_band").value.trim(), album = $("#f_album").value.trim();
