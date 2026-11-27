@@ -288,6 +288,7 @@
   .sortzeile label { margin: 0; color: var(--akz-hell); font-size: .74rem; letter-spacing: .14em; text-transform: uppercase; text-shadow: none; font-weight: 700; white-space: nowrap; }
   .sortsteuerung select { flex: 1 1 auto; min-width: 0; max-width: 190px; margin-left: auto; background-color: var(--seg-on); border: 0; border-radius: 9px; padding: 7px 10px; font-size: .9rem; font-weight: 600; color: #fff; }
   .sortsteuerung select option { background: #17142a; }
+  @media (max-width: 400px) { .sortzeile label { letter-spacing: .08em; font-size: .68rem; } .sortsteuerung { gap: 2px; padding-left: 10px; } .sortsteuerung button { width: 36px; } .sortsteuerung select { padding: 7px 6px; font-size: .86rem; } }
   .sortsteuerung button { flex: none; background: transparent; border: 0; border-radius: 9px; width: 42px; height: 38px; padding: 0; font-size: 1.2rem; color: var(--text); }
   .sortsteuerung button:hover, .sortsteuerung button:active { background: var(--seg-on); color: #fff; }
   #ansichtWechsel { padding: 0; }
@@ -473,7 +474,7 @@
   <div class="eseite" data-seite="ueber" hidden>
     <div class="ekarte">
       <b id="ueberZahlen"></b>
-      <span class="hinweis" id="ueberVersion" style="display:block;margin:2px 0 0">Version 46 (Als App installierbar)</span>
+      <span class="hinweis" id="ueberVersion" style="display:block;margin:2px 0 0">Version 47 (Kürzere Sortier-Namen)</span>
       <p class="hinweis">Die Daten liegen in diesem Browser und – wenn Google Drive verbunden ist – zusätzlich in deinem Drive. Mit „Sync-Datei exportieren“ kannst du jederzeit eine Sicherung ziehen.</p>
     </div>
   </div>
@@ -1085,10 +1086,11 @@ function baueFilter() {
   optionen($('[data-f="format"]'), FORMATE, "alle");
   optionen($('[data-f="zustand"]'), ZUSTAND, "alle");
   const s = $("#sortFeld");
+  const KURZ = { band: "Band", jahr: "Pressung", orig_jahr: "Original", katalognr: "Katalog", preis: "EK-Preis", marktwert: "Marktwert" };   // kurze Namen, damit sie in die Sortierzeile passen
   FELDER.filter(f => f[0] !== "notizen").forEach(([k, n]) => {
-    const o = document.createElement("option"); o.value = k; o.textContent = n; s.appendChild(o);
+    const o = document.createElement("option"); o.value = k; o.textContent = KURZ[k] || n; o.title = n; s.appendChild(o);
   });
-  [["bewertung", "Bewertung"], ["angelegt", "Zuletzt hinzugefügt"], ["geaendert", "Zuletzt geändert"]].forEach(([v, t]) => {
+  [["bewertung", "Bewertung"], ["angelegt", "Hinzugefügt"], ["geaendert", "Geändert"]].forEach(([v, t]) => {
     const o = document.createElement("option"); o.value = v; o.textContent = t; s.appendChild(o);
   });
   const bf = $('[data-f="bewertung"]');
