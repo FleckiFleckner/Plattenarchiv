@@ -193,6 +193,7 @@
   .zeile { display: flex; justify-content: space-between; gap: 10px; padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,.08); font-size: .92rem; cursor: pointer; }
   .zeile:last-child { border-bottom: 0; }
   .zeile span:last-child { color: var(--wert); white-space: nowrap; }
+  .zeile small { display: block; color: var(--muted); font-size: .74rem; font-weight: 400; margin-top: 1px; }
   .zeile.minus span:last-child { color: #ff8f86; }
   .hinw { font-size: .85rem; color: var(--muted); margin: 6px 0 0; }
   #ansichtWechsel { font-size: 1.2rem; padding-left: 14px; padding-right: 14px; }
@@ -458,7 +459,7 @@
   <div class="eseite" data-seite="ueber" hidden>
     <div class="ekarte">
       <b id="ueberZahlen"></b>
-      <span class="hinweis" id="ueberVersion" style="display:block;margin:2px 0 0">Version 42 (Sammlung: Raster, Sortierung, Rückgängig)</span>
+      <span class="hinweis" id="ueberVersion" style="display:block;margin:2px 0 0">Version 43 (Kaufdaten)</span>
       <p class="hinweis">Die Daten liegen in diesem Browser und – wenn Google Drive verbunden ist – zusätzlich in deinem Drive. Mit „Sync-Datei exportieren“ kannst du jederzeit eine Sicherung ziehen.</p>
     </div>
   </div>
@@ -508,6 +509,7 @@
   </form>
 </dialog>
 <datalist id="genreListe"></datalist>
+<datalist id="haendlerListe"></datalist>
 <div id="lade"></div>
 
 <dialog id="scanDlg">
@@ -556,7 +558,7 @@ const FELDER = [
   ["land", "Land"], ["anzahl", "Anzahl"], ["preis", "EK-Preis (€)"], ["marktwert", "Marktwert (€, ca.)"], ["notizen", "Notizen"]
 ];   // „preis“ bleibt intern der Schlüssel für den EK-Preis, damit alte Einträge und Sync-Dateien passen
 const KEYS = FELDER.map(f => f[0]);
-const EXTRA = ["cover_mbid", "cover_foto", "discogs_id", "bewertung", "wunsch", "zielpreis", "mw_alt", "mw_datum", "angelegt"];   // werden nur mitgeführt und synchronisiert
+const EXTRA = ["cover_mbid", "cover_foto", "discogs_id", "bewertung", "wunsch", "zielpreis", "mw_alt", "mw_datum", "angelegt", "kaufdatum", "haendler"];   // werden nur mitgeführt und synchronisiert
 const PFLICHT = ["band", "album", "genre"];
 const FORMATE = ["LP", "Doppel-LP", "EP", "Single 7\"", "Maxi 12\"", "Box-Set", "Sonstiges"];
 // Einfache Zustandsstufen. Alte Einträge mit Goldmine-Kürzeln (M, NM, VG+ …) bleiben unverändert gespeichert und werden nur umgedeutet angezeigt.
@@ -734,6 +736,8 @@ function optionen(sel, werte, leer) {
 function auswahllistenAktualisieren() {
   const genres = [...new Set(sichtbar().map(d => d.genre).filter(Boolean))].sort((a, b) => a.localeCompare(b, "de"));
   optionen($('[data-f="genre"]'), genres, "alle");
+  const hl = $("#haendlerListe"); hl.innerHTML = "";
+  [...new Set(alleAktiv().map(d => d.haendler).filter(Boolean))].sort((a, b) => a.localeCompare(b, "de")).forEach(h => { const o = document.createElement("option"); o.value = h; hl.appendChild(o); });
   const dl = $("#genreListe"); dl.innerHTML = "";
   genres.forEach(g => { const o = document.createElement("option"); o.value = g; dl.appendChild(o); });
 }
@@ -779,6 +783,9 @@ function baueFormular() {
   }
   const zd = $("#f_zustand").parentElement.parentElement;   // Bewertung im Abschnitt „Pressung & Zustand“, damit nichts wegscrollt
   zd.insertAdjacentHTML("beforeend", '<div class="full bewZeile"><label>Meine Bewertung</label><div class="sterneWahl" id="sterneWahl" role="group" aria-label="Bewertung"></div></div>');
+  const kf = neuerAbschnitt("wert", "Kauf");
+  kf.insertAdjacentHTML("beforeend", '<div><label for="f_kaufdatum">Gekauft am</label><input id="f_kaufdatum" type="date"></div>'
+    + '<div><label for="f_haendler">Gekauft bei</label><input id="f_haendler" list="haendlerListe" placeholder="z. B. Plattenladen, Discogs"></div>');
   const ws = neuerAbschnitt("wert", "Wunschliste");
   ws.insertAdjacentHTML("beforeend", '<div class="full" id="wunschBox"><label for="f_zielpreis">Zielpreis (€)</label><input id="f_zielpreis" inputmode="decimal" placeholder="z. B. 25,00"></div>'
     + '<div class="full kauf" id="kaufBox"><button type="button" id="gekauft">✓ Gekauft – in die Sammlung übernehmen</button></div>');
@@ -789,7 +796,9 @@ function baueFormular() {
     sw.appendChild(b);
   }
   $("#gekauft").onclick = () => {
-    formWunsch = false; wunschZeigen(); dlgReiter("wert"); $("#f_preis").focus();
+    formWunsch = false; wunschZeigen(); dlgReiter("wert");
+    if (!$("#f_kaufdatum").value) { const t = new Date(); $("#f_kaufdatum").value = t.getFullYear() + "-" + String(t.getMonth() + 1).padStart(2, "0") + "-" + String(t.getDate()).padStart(2, "0"); }
+    $("#f_preis").focus();
     toast("Wird in die Sammlung übernommen – EK-Preis und Zustand ergänzen und speichern.");
   };
 }
@@ -832,6 +841,7 @@ function oeffne(uid) {
   formBewertung = d ? Math.min(5, parseInt(d.bewertung, 10) || 0) : 0; sterneZeigen();
   formWunsch = d ? d.wunsch === "1" : modus === "wunsch";
   $("#f_zielpreis").value = d ? d.zielpreis || "" : "";
+  $("#f_kaufdatum").value = d ? d.kaufdatum || "" : ""; $("#f_haendler").value = d ? d.haendler || "" : "";
   wunschZeigen();
   const zsel = $("#f_zustand");
   [...zsel.options].forEach(o => { if (o.value && !ZUSTAND.includes(o.value)) o.remove(); });   // unbekannter Altwert (z. B. selbst getippt) bleibt als Option erhalten, damit er beim Speichern nicht verloren geht
@@ -888,6 +898,7 @@ $("#form").addEventListener("submit", async e => {
   const werte = {}; KEYS.forEach(k => werte[k] = $("#f_" + k).value.trim());
   werte.bewertung = formBewertung ? String(formBewertung) : ""; werte.wunsch = formWunsch ? "1" : "";
   werte.zielpreis = formWunsch ? $("#f_zielpreis").value.trim() : "";
+  werte.kaufdatum = /^\d{4}-\d{2}-\d{2}$/.test($("#f_kaufdatum").value) ? $("#f_kaufdatum").value : ""; werte.haendler = $("#f_haendler").value.trim();
   werte.cover_foto = formCover.foto; werte.cover_mbid = formCover.mbid; werte.discogs_id = formCover.discogs;
   const fehlt = FELDER.filter(([k]) => PFLICHT.includes(k) && !werte[k]).map(f => f[1]);
   if (fehlt.length) { dlgReiter("basis"); toast("Bitte ausfüllen: " + fehlt.join(", ")); return; }
@@ -968,6 +979,24 @@ function renderStatistik() {
   balken("Nach Genre", zaehle(d => d.genre), 8);
   balken("Nach Jahrzehnt (Erstveröffentlichung)", zaehle(d => { const j = parseInt(d.orig_jahr || d.jahr, 10); return j ? Math.floor(j / 10) * 10 + "er" : ""; }), 10);
   balken("Meistvertretene Bands", zaehle(d => d.band), 5);
+  const datumKurz = iso => /^\d{4}-\d{2}-\d{2}$/.test(iso || "") ? iso.slice(8) + "." + iso.slice(5, 7) + "." + iso.slice(0, 4) : "";
+  const gew = S.filter(d => zahlKurz(d.marktwert) != null && zahlKurz(d.preis) != null)
+    .map(d => ({ d, delta: (zahlKurz(d.marktwert) - zahlKurz(d.preis)) * stk(d) })).filter(x => Math.abs(x.delta) >= 0.01);
+  if (gew.length) {
+    const k = karte("Wertentwicklung je Platte (Marktwert gegen EK-Preis)");
+    gew.sort((a, b) => b.delta - a.delta);
+    [...gew.filter(x => x.delta > 0).slice(0, 3), ...gew.filter(x => x.delta < 0).slice(-3).reverse()].forEach(x => {
+      const z = zeile(x.d, (x.delta > 0 ? "+" : "−") + geld(Math.abs(x.delta)), x.delta < 0 ? "minus" : "");
+      const info = [datumKurz(x.d.kaufdatum) && "gekauft " + datumKurz(x.d.kaufdatum), x.d.haendler, "EK " + geld(zahlKurz(x.d.preis))].filter(Boolean).join(" · ");
+      z.firstChild.append(el("small", "", info)); k.append(z);
+    });
+  }
+  const jahre = new Map(); for (const d of S) { const j = (d.kaufdatum || "").slice(0, 4); if (j) jahre.set(j, (jahre.get(j) || 0) + stk(d)); }
+  if (jahre.size) {
+    const k = karte("Käufe pro Jahr"), hoechst = Math.max(...jahre.values());
+    [...jahre.entries()].sort((a, b) => a[0].localeCompare(b[0])).forEach(([n, c]) => { const r = el("div", "balken"), b = el("i"); b.style.width = Math.max(4, c / hoechst * 100) + "%"; r.append(el("span", "", n), b, el("span", "n", String(c))); k.append(r); });
+  }
+  balken("Gekauft bei", zaehle(d => d.haendler), 6);
   const ver = S.concat(W).filter(d => d.mw_alt && zahlKurz(d.marktwert) != null && zahlKurz(d.mw_alt) != null)
     .map(d => ({ d, delta: zahlKurz(d.marktwert) - zahlKurz(d.mw_alt) })).filter(x => Math.abs(x.delta) >= 0.01);
   if (ver.length) {
@@ -1074,8 +1103,8 @@ function mergen(records) {
 }
 $("#csvExport").onclick = () => {
   const esc = v => '"' + String(v ?? "").replace(/"/g, '""') + '"';
-  const zeilen = [FELDER.map(f => esc(f[1])).join(";")];
-  gefiltert().sort(vergleich).forEach(d => zeilen.push(KEYS.map(k => esc(d[k])).join(";")));
+  const zeilen = [[...FELDER.map(f => f[1]), "Gekauft am", "Gekauft bei"].map(esc).join(";")];
+  gefiltert().sort(vergleich).forEach(d => zeilen.push([...KEYS.map(k => d[k]), d.kaufdatum, d.haendler].map(esc).join(";")));
   dateiAusgeben("plattenarchiv.csv", "﻿" + zeilen.join("\r\n"), "text/csv");
 };
 
