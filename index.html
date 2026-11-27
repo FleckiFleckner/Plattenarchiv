@@ -372,9 +372,47 @@
   @media (prefers-reduced-motion: reduce) { #zufallKarte.neu { animation: none; } }
   #zufallBtn { font-size: 1.1rem; }
   .linkbtn { background: transparent; border: 0; color: var(--akz-hell); padding: 8px 4px; font-size: .92rem; }
+  /* ===== Einladungscode ===== */
+  #zugang { position: fixed; inset: 0; z-index: 9999; display: flex; align-items: center; justify-content: center; padding: 20px; background: rgba(8,6,16,.97); }
+  #zugang[hidden] { display: none; }
+  #zugang .box { width: 100%; max-width: 360px; padding: 26px 22px; border-radius: 18px; background: #17142a; border: 1px solid rgba(182,85,216,.5); box-shadow: 0 0 30px rgba(182,85,216,.3); text-align: center; }
+  #zugang h2 { margin: 0 0 6px; font-size: 1.25rem; } #zugang p { margin: 0 0 16px; color: var(--muted); font-size: .92rem; }
+  #zugang input { width: 100%; box-sizing: border-box; text-align: center; font-size: 1.05rem; margin-bottom: 12px; }
+  #zugang button { width: 100%; padding: 12px; }
+  #zugang .fehler { color: #f08a8a; min-height: 1.3em; margin: 10px 0 0; font-size: .88rem; }
+  #zugang.wackeln .box { animation: wack .35s; } @keyframes wack { 25% { transform: translateX(-8px); } 75% { transform: translateX(8px); } }
 </style>
 </head>
 <body>
+<div id="zugang" hidden>
+  <form class="box" id="zugangForm" autocomplete="off">
+    <h2>Plattenarchiv</h2>
+    <p>Zugang nur auf Einladung. Bitte den Einladungscode eingeben.</p>
+    <input id="zugangCode" type="text" placeholder="Einladungscode" autocapitalize="off" autocorrect="off" spellcheck="false" aria-label="Einladungscode">
+    <button type="submit" class="primary">Öffnen</button>
+    <div class="fehler" id="zugangFehler" role="alert"></div>
+  </form>
+</div>
+<script>
+// Einladungscode: hält Zufallsbesucher ab. Hinweis: Die Seite ist öffentlich – das ist kein Hochsicherheitsschutz. Die Platten-Daten liegen ohnehin nur lokal im jeweiligen Browser.
+(function () {
+  const HASH = "fe85e1d96afb0b026332aa24fe4ba2ea1fa7a3f1114e6cad4d0ca0495e9cdafb", KEY = "plattenarchiv-zugang", box = document.getElementById("zugang");
+  const sha = async t => [...new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(t)))].map(b => b.toString(16).padStart(2, "0")).join("");
+  let gespeichert = null, hatDaten = false;
+  try { gespeichert = localStorage.getItem(KEY); const r = JSON.parse(localStorage.getItem("plattenarchiv-v1") || "[]"); hatDaten = Array.isArray(r) && r.length > 0; } catch (e) {}
+  if (gespeichert === HASH) return;
+  if (gespeichert === null && hatDaten) { try { localStorage.setItem(KEY, HASH); } catch (e) {} return; }   // bestehende Geräte mit Daten bleiben ohne Abfrage offen
+  if (!(window.crypto && crypto.subtle)) return;   // ohne Hash-Funktion nicht aussperren
+  box.hidden = false; let falsch = 0;
+  document.getElementById("zugangForm").addEventListener("submit", async e => {
+    e.preventDefault(); const f = document.getElementById("zugangFehler"), eingabe = document.getElementById("zugangCode").value.trim().toLowerCase();
+    if (falsch >= 5) await new Promise(r => setTimeout(r, Math.min(8000, (falsch - 4) * 1500)));
+    if (eingabe && await sha("plattenarchiv|" + eingabe) === HASH) { try { localStorage.setItem(KEY, HASH); } catch (x) {} box.hidden = true; return; }
+    falsch++; f.textContent = "Code stimmt nicht."; box.classList.remove("wackeln"); void box.offsetWidth; box.classList.add("wackeln");
+  });
+  setTimeout(() => { const i = document.getElementById("zugangCode"); if (i) i.focus(); }, 100);
+})();
+</script>
 <div id="bg" aria-hidden="true"></div><div id="bgSchleier"></div>
 <header>
   <button id="wolke" type="button" aria-label="Mit Google Drive abgleichen" title="Mit Google Drive abgleichen">☁</button>
@@ -520,7 +558,7 @@
   <div class="eseite" data-seite="ueber" hidden>
     <div class="ekarte">
       <b id="ueberZahlen"></b>
-      <span class="hinweis" id="ueberVersion" style="display:block;margin:2px 0 0">Version 57 (Chip-Filter sicherer)</span>
+      <span class="hinweis" id="ueberVersion" style="display:block;margin:2px 0 0">Version 58 (Einladungscode)</span>
       <p class="hinweis">Die Daten liegen in diesem Browser und – wenn Google Drive verbunden ist – zusätzlich in deinem Drive. Mit „Sync-Datei exportieren“ kannst du jederzeit eine Sicherung ziehen.</p>
     </div>
   </div>
