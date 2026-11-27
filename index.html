@@ -172,9 +172,18 @@
   #liste:not(.raster) .karte b { font-size: 1rem; }
   #liste:not(.raster) .karte .album { font-size: .92rem; line-height: 1.25; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
   #liste:not(.raster) .karte .meta { font-size: .8rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .kchips { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-top: 3px; }
+  .kchips { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 8px; margin-top: 5px; }
   .kchips .zchip, .kchips .mchip { margin: 0; font-size: .72rem; padding: 0 6px; }
   .kchips .sterne { font-size: .72rem; padding: 0 6px; box-shadow: none; background: rgba(196,162,87,.12); border-color: rgba(196,162,87,.45); letter-spacing: 0; }
+  .aktiv { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 8px 0 2px; }
+  .aktiv[hidden] { display: none; }
+  .aktiv button { display: inline-flex; align-items: center; gap: 6px; padding: 4px 6px 4px 11px; border-radius: 999px; font-size: .82rem; background: rgba(182,85,216,.22); border: 1px solid var(--accent); color: #fff; box-shadow: 0 0 10px rgba(182,85,216,.3); }
+  .aktiv button::after { content: "✕"; opacity: .75; font-size: .75rem; padding: 0 4px; }
+  .aktiv button.alle { background: transparent; border-color: rgba(255,255,255,.25); box-shadow: none; color: var(--muted); }
+  .aktiv button.alle::after { content: ""; padding: 0; } .aktiv button.alle { padding: 4px 11px; }
+  .gchip { display: inline-block; padding: 0 8px; border-radius: 6px; background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.25); color: #e4e0db; font-size: .72rem; font-weight: 600; line-height: 1.5; white-space: nowrap; }
+  .fc { cursor: pointer; position: relative; } .fc::after { content: ""; position: absolute; inset: -4px 0; }   /* nur nach oben/unten größer, damit Nachbar-Chips sich nicht überlappen */
+  .fc.akt { box-shadow: 0 0 0 1px var(--accent), 0 0 9px rgba(182,85,216,.7); }   /* größere Tippfläche, ohne dass das Chip größer aussieht */ .fc:active { filter: brightness(1.4); }
   .fehlt { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 50%; background: rgba(240,170,60,.18); border: 1px solid rgba(240,170,60,.75); color: #f0aa3c; font-size: .72rem; font-weight: 800; line-height: 1; cursor: help; }
   #liste.raster .fehlt.punkt { position: absolute; top: 4px; left: 4px; width: 12px; height: 12px; font-size: 0; background: #f0aa3c; border-color: #1b1731; }
   #liste.raster .karte div.cover b { font-size: .82rem; line-height: 1.15; overflow-wrap: break-word; word-break: normal; } #liste.raster .karte div.cover span { font-size: .72rem; }
@@ -200,7 +209,7 @@
   .sterneWahl button { background: transparent; border: 0; padding: 2px 6px; font-size: 1.6rem; line-height: 1; color: #4a4560; }
   .sterneWahl button.an { color: var(--stern); }
   .sec .kauf { grid-column: 1 / -1; }
-  body.stat .sortzeile, body.stat #status, body.stat #filter, body.stat #suche { display: none; }
+  body.stat .sortzeile, body.stat #status, body.stat #filter, body.stat #suche, body.stat #aktiv { display: none; }
   #liste.stat, #liste.stat:not(.raster) { display: block; background: transparent; padding: 0 16px; width: auto; }
   .stk { background: var(--card); border-radius: 16px; padding: 14px 16px; margin: 0 0 12px; }
   .stk h3 { margin: 0 0 10px; font-size: .78rem; letter-spacing: .14em; text-transform: uppercase; color: var(--akz-hell); }
@@ -410,6 +419,7 @@
     </div>
   </details>
   <input id="suche" type="search" placeholder="Suchen …" autocomplete="off">
+  <div id="aktiv" class="aktiv" hidden></div>
   </div>
 </header>
 
@@ -510,7 +520,7 @@
   <div class="eseite" data-seite="ueber" hidden>
     <div class="ekarte">
       <b id="ueberZahlen"></b>
-      <span class="hinweis" id="ueberVersion" style="display:block;margin:2px 0 0">Version 54 (Sterne zuletzt, alle Marken)</span>
+      <span class="hinweis" id="ueberVersion" style="display:block;margin:2px 0 0">Version 57 (Chip-Filter sicherer)</span>
       <p class="hinweis">Die Daten liegen in diesem Browser und – wenn Google Drive verbunden ist – zusätzlich in deinem Drive. Mit „Sync-Datei exportieren“ kannst du jederzeit eine Sicherung ziehen.</p>
     </div>
   </div>
@@ -739,6 +749,25 @@ function vergleich(a, b) {
   }
   return String(x).localeCompare(String(y), "de", { sensitivity: "base", numeric: true });
 }
+function filterSetzen(feld, wert) {   // Tipp auf einen Chip: Filter zu den bestehenden dazunehmen
+  const el = $('[data-f="' + feld + '"]'); if (!el) return;
+  if (modus === "statistik") modus = "sammlung";
+  if (el.value === String(wert)) return;   // schon aktiv: nichts tun (Entfernen nur über die Filter-Pille), damit nichts versehentlich ausgeht
+  el.value = wert; if (el.value !== String(wert)) { el.value = ""; return; }
+  render(); toast("Filter: " + (el.tagName === "SELECT" ? el.options[el.selectedIndex].textContent : wert));
+}
+function aktivZeigen() {
+  const box = $("#aktiv"); box.innerHTML = "";
+  const aktive = [...document.querySelectorAll("[data-f]")].filter(el => el.value.trim());
+  aktive.forEach(el => {
+    const name = el.parentElement.querySelector("label"), b = document.createElement("button"); b.type = "button";
+    const text = el.tagName === "SELECT" ? el.options[el.selectedIndex].textContent : el.value.trim();
+    b.textContent = (name ? name.textContent + ": " : "") + text; b.title = "Filter entfernen";
+    b.onclick = () => { el.value = ""; render(); }; box.appendChild(b);
+  });
+  if (aktive.length > 1) { const a = document.createElement("button"); a.type = "button"; a.className = "alle"; a.textContent = "Alle zurücksetzen"; a.onclick = () => $("#reset").click(); box.appendChild(a); }
+  box.hidden = !aktive.length;
+}
 function render() {
   document.body.classList.toggle("stat", modus === "statistik");
   document.querySelectorAll("#modus button").forEach(b => {
@@ -780,7 +809,7 @@ function render() {
     const stueck = parseInt(d.anzahl, 10) || 1;
     const fehlt = fehlendes(d);
     const jahrText = d.orig_jahr && d.jahr && d.orig_jahr !== d.jahr ? d.orig_jahr + " (Pr. " + d.jahr + ")" : (d.orig_jahr || d.jahr || "");
-    const meta = [d.genre, jahrText, d.format].filter(Boolean).join(" · ");
+    const meta = [jahrText, d.format].filter(Boolean).join(" · ");   // Genre steht als Chip darunter
     const bandNoetig = !(gruppieren && sortFeld === "band");   // steht die Band schon als Überschrift da, entfällt die doppelte Zeile
     const mkBadge = () => { const bd = document.createElement("span"); bd.className = "badge"; bd.textContent = stueck + "×"; bd.title = stueck + "× vorhanden"; return bd; };
     const warn = () => { const w = document.createElement("span"); w.className = "fehlt"; w.textContent = "!"; w.title = "Es fehlt noch: " + fehlt.join(", ");
@@ -812,11 +841,13 @@ function render() {
       if (stueck > 1) { if (bandNoetig) band.append(" ", mkBadge()); else alb.append(" ", mkBadge()); }
       const m = document.createElement("div"); m.className = "meta"; m.textContent = meta;
       const chips = document.createElement("div"); chips.className = "kchips";
-      if (d.zustand) { const t = document.createElement("span"); t.className = "zchip"; t.textContent = zustandNeu(d.zustand); t.title = "Zustand"; chips.append(t); }
-      markenListe(d).forEach(x => { const t = document.createElement("span"); t.className = "mchip"; t.textContent = x; t.title = "Marke"; chips.append(t); });
+      const fc = (t, feld, wert, tip) => { t.classList.add("fc"); t.title = tip; { const fe = $('[data-f="' + feld + '"]'); if (fe && fe.value === String(wert)) t.classList.add("akt"); } t.onclick = e => { e.stopPropagation(); filterSetzen(feld, wert); }; return t; };
+      if (d.genre) { const t = document.createElement("span"); t.className = "gchip"; t.textContent = d.genre; chips.append(fc(t, "genre", d.genre, "Alle Platten mit diesem Genre zeigen")); }
+      if (d.zustand) { const t = document.createElement("span"); t.className = "zchip"; t.textContent = zustandNeu(d.zustand); chips.append(fc(t, "zustand", zustandNeu(d.zustand), "Alle Platten mit diesem Zustand zeigen")); }
+      markenListe(d).forEach(x => { const t = document.createElement("span"); t.className = "mchip"; t.textContent = x; chips.append(fc(t, "marke", x, "Alle Platten mit dieser Marke zeigen")); });
       if (fehlt.length) chips.append(warn());
       const sb = parseInt(d.bewertung, 10);   // Sterne immer zuletzt
-      if (sb >= 1 && sb <= 5) { const t = document.createElement("span"); t.className = "sterne"; t.textContent = sterneText(sb) + " " + sb; t.title = sb + " von 5 Sternen"; chips.append(t); }
+      if (sb >= 1 && sb <= 5) { const t = document.createElement("span"); t.className = "sterne"; t.textContent = sterneText(sb) + " " + sb; chips.append(fc(t, "bewertung", String(sb), "Alle Platten mit mindestens " + sb + " Sternen zeigen")); }
       const text = document.createElement("div"); text.style.minWidth = "0"; text.style.flex = "1 1 auto";
       if (bandNoetig) text.append(band); text.append(alb); if (meta) text.append(m); if (chips.children.length) text.append(chips);
       const rechts = document.createElement("div"); rechts.className = "rechts";
@@ -835,6 +866,7 @@ function render() {
   }
   $("#status").innerHTML = `<b>${zeilen.length}</b> von ${sichtbar().length} ${modus === "wunsch" ? "Wunschlisten-Platten" : "Platten"}`;
   auswahllistenAktualisieren();
+  aktivZeigen();
 }
 function optionen(sel, werte, leer) {
   const alt = sel.value; sel.innerHTML = "";
@@ -986,6 +1018,7 @@ function oeffne(uid) {
   formCover = { foto: d ? d.cover_foto || "" : "", mbid: d ? d.cover_mbid || "" : "", discogs: d ? d.discogs_id || "" : "" };
   coverVorschau();
   $("#loeschen").style.display = d ? "" : "none";
+  $(".ocrzeile").style.display = uid ? "none" : "";   // Cover-Foto-Texterkennung nur beim Neuanlegen
   zustandChips(); fundZeigen(); dlgReiter("basis");
   $("#dlg").showModal();
 }
