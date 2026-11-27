@@ -289,8 +289,19 @@
   .sortsteuerung { display: flex; align-items: center; gap: 4px; background: var(--seg-bg); border-radius: 12px; padding: 3px 3px 3px 14px; }
   .sortzeile label { margin: 0; color: var(--akz-hell); font-size: .74rem; letter-spacing: .14em; text-transform: uppercase; text-shadow: none; font-weight: 700; white-space: nowrap; }
   .sortsteuerung select { flex: 1 1 auto; min-width: 0; max-width: 190px; margin-left: auto; background-color: var(--seg-on); border: 0; border-radius: 9px; padding: 7px 10px; font-size: .9rem; font-weight: 600; color: #fff; }
-  .sortsteuerung select option { background: #17142a; }
-  @media (max-width: 400px) { .sortzeile label { letter-spacing: .08em; font-size: .68rem; } .sortsteuerung { gap: 2px; padding-left: 10px; } .sortsteuerung button { width: 36px; } .sortsteuerung select { padding: 7px 6px; font-size: .86rem; } }
+  .sortwahl { position: relative; flex: 1 1 auto; min-width: 0; max-width: 190px; margin-left: auto; }
+  .sortsteuerung .sortwahl > button#sortBtn { display: flex; align-items: center; justify-content: space-between; gap: 6px; width: 100%; height: auto; padding: 8px 10px 8px 12px; background: var(--seg-on); border-radius: 9px; font-size: .9rem; font-weight: 600; color: #fff; text-align: left; }
+  #sortBtn svg { flex: none; opacity: .8; transition: transform .18s; } #sortBtn[aria-expanded="true"] svg { transform: rotate(180deg); }
+  #sortBtn[aria-expanded="true"] { box-shadow: 0 0 0 1px var(--accent), 0 0 12px rgba(182,85,216,.4); }
+  #sortBtnText { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #sortMenue { position: absolute; z-index: 30; top: calc(100% + 6px); right: 0; min-width: 190px; padding: 5px; border-radius: 14px; background: #1b1731; border: 1px solid rgba(182,85,216,.45); box-shadow: 0 12px 32px rgba(0,0,0,.6), 0 0 18px rgba(182,85,216,.25); max-height: 60vh; overflow-y: auto; overscroll-behavior: contain; }
+  #sortMenue button { display: flex; align-items: center; justify-content: space-between; width: 100%; height: auto; padding: 10px 12px; border-radius: 9px; background: transparent; font-size: .95rem; font-weight: 500; color: var(--text); text-align: left; }
+  #sortMenue button:hover, #sortMenue button:active { background: rgba(255,255,255,.07); }
+  #sortMenue button.on { background: rgba(182,85,216,.22); color: #fff; font-weight: 700; }
+  #sortMenue button.on::after { content: "✓"; color: var(--akz-hell); margin-left: 10px; }
+  html:has(dialog[open]), body:has(dialog[open]) { overflow: hidden; }   /* Hintergrund scrollt nicht mit, solange ein Fenster offen ist */
+  dialog { overscroll-behavior: contain; }
+  @media (max-width: 400px) { .sortzeile label { letter-spacing: .08em; font-size: .68rem; } .sortsteuerung { gap: 2px; padding-left: 10px; } .sortsteuerung button { width: 36px; } .sortsteuerung .sortwahl > button#sortBtn { padding: 8px 6px 8px 8px; font-size: .86rem; width: 100%; } }
   .sortsteuerung button { flex: none; background: transparent; border: 0; border-radius: 9px; width: 42px; height: 38px; padding: 0; font-size: 1.2rem; color: var(--text); }
   .sortsteuerung button:hover, .sortsteuerung button:active { background: var(--seg-on); color: #fff; }
   #ansichtWechsel { padding: 0; }
@@ -388,7 +399,11 @@
 <div class="sortzeile">
   <div class="sortsteuerung">
     <label for="sortFeld">Sortieren</label>
-    <select id="sortFeld"></select>
+    <select id="sortFeld" hidden aria-hidden="true" tabindex="-1"></select>
+    <div class="sortwahl">
+      <button type="button" id="sortBtn" aria-haspopup="listbox" aria-expanded="false"><span id="sortBtnText">Band</span><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></button>
+      <div id="sortMenue" role="listbox" aria-label="Sortieren nach" hidden></div>
+    </div>
     <button id="sortRichtung" type="button" aria-label="Aufsteigend sortiert – tippen für absteigend" title="Aufsteigend">↑</button>
       <button id="zufallBtn" type="button" aria-label="Zufallsplatte" title="Zufallsplatte – was höre ich heute?">🎲</button>
       <button id="ansichtWechsel" type="button" aria-label="Ansicht wechseln" title="Ansicht wechseln">▦</button>
@@ -478,7 +493,7 @@
   <div class="eseite" data-seite="ueber" hidden>
     <div class="ekarte">
       <b id="ueberZahlen"></b>
-      <span class="hinweis" id="ueberVersion" style="display:block;margin:2px 0 0">Version 51 (Sortier-Menü gekürzt)</span>
+      <span class="hinweis" id="ueberVersion" style="display:block;margin:2px 0 0">Version 52 (Sortier-Menü)</span>
       <p class="hinweis">Die Daten liegen in diesem Browser und – wenn Google Drive verbunden ist – zusätzlich in deinem Drive. Mit „Sync-Datei exportieren“ kannst du jederzeit eine Sicherung ziehen.</p>
     </div>
   </div>
@@ -1140,8 +1155,22 @@ function baueFilter() {
   [["", "alle"], ["1", "ab 1 Stern"], ["2", "ab 2 Sternen"], ["3", "ab 3 Sternen"], ["4", "ab 4 Sternen"], ["5", "nur 5 Sterne"]].forEach(([v, t]) => {
     const o = document.createElement("option"); o.value = v; o.textContent = t; bf.appendChild(o);
   });
+  [...s.options].sort((a, b) => a.textContent.localeCompare(b.textContent, "de")).forEach(o => s.appendChild(o));   // alphabetisch
+  const menue = $("#sortMenue"), sBtn = $("#sortBtn");
+  const menueZu = () => { menue.hidden = true; sBtn.setAttribute("aria-expanded", "false"); };
+  const menueZeigen = () => {
+    $("#sortBtnText").textContent = s.options[s.selectedIndex].textContent;
+    menue.innerHTML = "";
+    [...s.options].forEach(o => { const b = document.createElement("button"); b.type = "button"; b.setAttribute("role", "option"); b.textContent = o.textContent;
+      if (o.value === s.value) { b.className = "on"; b.setAttribute("aria-selected", "true"); }
+      b.onclick = () => { s.value = o.value; menueZu(); s.onchange(); }; menue.appendChild(b); });
+  };
+  sBtn.onclick = e => { e.stopPropagation(); if (menue.hidden) { menueZeigen(); menue.hidden = false; sBtn.setAttribute("aria-expanded", "true"); } else menueZu(); };
+  document.addEventListener("click", e => { if (!menue.hidden && !menue.contains(e.target)) menueZu(); });
+  document.addEventListener("keydown", e => { if (e.key === "Escape" && !menue.hidden) menueZu(); });
+  s.value = "band"; menueZeigen();
   s.onchange = () => {
-    sortFeld = s.value;
+    sortFeld = s.value; menueZeigen();
     if (sortFeld === "cover") coverPruefen();   // erst online prüfen, ob die gespeicherten Cover wirklich existieren
     if (sortFeld === "angelegt" || sortFeld === "geaendert") rueckwaerts = true;   // neueste zuerst
     const t = $("#sortRichtung"); t.textContent = rueckwaerts ? "↓" : "↑"; t.title = rueckwaerts ? "Absteigend" : "Aufsteigend";
