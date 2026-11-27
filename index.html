@@ -272,6 +272,8 @@
   #formGrid { display: block; margin-top: 4px; }
   .sec { background: #17171c; border: 1px solid #25252c; border-radius: 14px; padding: 12px 14px 8px; margin-bottom: 10px; display: grid; grid-template-columns: 1fr 1fr; gap: 6px 14px; }
   .sec .full { grid-column: 1 / -1; }
+  .mwzeile { display: flex; align-items: flex-end; gap: 8px; } .mwzeile input { flex: 1 1 auto; min-width: 0; }
+  .mwklein { flex: none; width: 40px; height: 36px; padding: 0; font-size: 1.15rem; line-height: 1; }
   #filterMehr { grid-column: 1 / -1; }
   #filterMehr > summary { display: block; cursor: pointer; color: var(--akz-hell); font-size: .85rem; padding: 4px 0; list-style: none; }
   #filterMehr > summary::-webkit-details-marker { display: none; }
@@ -620,7 +622,7 @@
   <div class="eseite" data-seite="ueber" hidden>
     <div class="ekarte">
       <b id="ueberZahlen"></b>
-      <span class="hinweis" id="ueberVersion" style="display:block;margin:2px 0 0">Version 63 (Bedienung aufgeräumt)</span>
+      <span class="hinweis" id="ueberVersion" style="display:block;margin:2px 0 0">Version 66 (Foto-Reiter kompakt)</span>
       <div class="aktionen" style="margin:6px 0"><button type="button" id="hilfeAusEinst">? Was bedeutet was?</button></div>
       <p class="hinweis">Die Daten liegen in diesem Browser und – wenn Google Drive verbunden ist – zusätzlich in deinem Drive. Mit „Sync-Datei exportieren“ kannst du jederzeit eine Sicherung ziehen.</p>
     </div>
@@ -660,14 +662,12 @@
           <button type="button" id="coverWeg">Entfernen</button>
         </div>
         <input id="coverWahl" type="file" accept="image/*" hidden>
-        <p class="hinweis full">Beim Scannen/Online-Suchen wird das Cover automatisch geladen, falls es eins gibt. Du kannst auch ein eigenes Foto machen oder aus der Galerie nehmen.</p>
       </div>
       <div class="sec" data-tab="foto">
         <h4>Weitere Fotos</h4>
         <div class="full fchips" id="fotoArten"></div>
         <div class="full fgal" id="fotoGal"></div>
         <input id="galWahl" type="file" accept="image/*" multiple hidden>
-        <p class="hinweis full">Erst die Art wählen (z. B. Signatur), dann „+“ tippen. Diese Fotos bleiben nur auf diesem Gerät – sie sind nicht im Drive-Abgleich und nicht in der Sync-Datei.</p>
       </div>
     </div>
     <div class="aktionen untenleiste">
@@ -1194,8 +1194,7 @@ function baueFormular() {
     sec.appendChild(div);
   }
   { const hj = (id, text) => { const e = grid.querySelector("#f_" + id); if (!e) return; const p = document.createElement("p"); p.className = "hinweis full"; p.textContent = text; e.parentElement.after(p); };
-    hj("format", "Pressung = Jahr dieser Ausgabe. Das Jahr der Erstveröffentlichung steht unter Details.");
-    hj("label", "Erstveröff. = Jahr, in dem das Album zum ersten Mal erschien (kann älter als deine Pressung sein)."); }
+ }
   const mk = neuerAbschnitt("details", "Merkmale");
   mk.insertAdjacentHTML("beforeend", '<div class="full"><div class="chips" id="markenChips"></div>'
     + '<div class="row" style="gap:8px"><input id="markeNeu" list="markenDatalist" placeholder="Merkmal hinzufügen (z. B. signiert)" autocomplete="off" style="flex:1 1 auto;min-width:0"><button type="button" id="markeAdd" class="primary" aria-label="Merkmal hinzufügen">+</button></div>'
@@ -1220,6 +1219,9 @@ function baueFormular() {
   // Marktwert-Knopf und Hinweis gehören jetzt in den Abschnitt „Menge & Preis“; Reihenfolge im Reiter „Details“ festlegen
   const abschnitt = t => [...grid.children].find(e => e.firstChild && e.firstChild.textContent === t);
   const mp = abschnitt("Menge & Preis");
+  { const mwb = $("#mwBtn"), mwf = $("#f_marktwert");   // ↻-Knopf direkt neben das Marktwert-Feld
+    if (mwb && mwf) { const box = mwb.parentElement; mwb.textContent = "↻"; mwb.className = "mwklein"; mwb.title = mwb.ariaLabel = "Marktwert von Discogs neu holen";
+      const zeile = document.createElement("div"); zeile.className = "mwzeile"; mwf.before(zeile); zeile.append(mwf, mwb); box.remove(); } }
   document.querySelectorAll('#dBody > [data-tab="wert"]').forEach(e => { e.removeAttribute("data-tab"); e.classList.add("full"); if (mp) mp.appendChild(e); });
   ["Ausgabe", "Merkmale", "Menge & Preis", "Kauf", "Wunschliste", "Notizen", "Titelliste", "Mehr zur Platte"].forEach(t => { const e = abschnitt(t); if (e) grid.appendChild(e); });
   const sw = $("#sterneWahl");
