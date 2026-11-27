@@ -478,7 +478,7 @@
   <div class="eseite" data-seite="ueber" hidden>
     <div class="ekarte">
       <b id="ueberZahlen"></b>
-      <span class="hinweis" id="ueberVersion" style="display:block;margin:2px 0 0">Version 49 (Filter ohne Cover)</span>
+      <span class="hinweis" id="ueberVersion" style="display:block;margin:2px 0 0">Version 51 (Sortier-Menü gekürzt)</span>
       <p class="hinweis">Die Daten liegen in diesem Browser und – wenn Google Drive verbunden ist – zusätzlich in deinem Drive. Mit „Sync-Datei exportieren“ kannst du jederzeit eine Sicherung ziehen.</p>
     </div>
   </div>
@@ -686,6 +686,7 @@ function gefiltert() {
   });
 }
 function vergleich(a, b) {
+  if (sortFeld === "cover") { const dc = (hatCover(a) ? 1 : 0) - (hatCover(b) ? 1 : 0); return dc || String(a.band || "").localeCompare(String(b.band || ""), "de", { sensitivity: "base" }); }   // ohne Cover zuerst
   const x = a[sortFeld] || "", y = b[sortFeld] || "";
   if (sortFeld === "zustand") {   // vom besten zum schlechtesten Zustand; unbekannte Werte und leere ans Ende
     const rang = v => { const i = ZUSTAND.indexOf(zustandNeu(v)); return i < 0 ? 99 : i; };
@@ -725,6 +726,7 @@ function render() {
   for (const d of zeilen) {
     if (gruppieren) {
       const roh = sortFeld === "zustand" ? zustandNeu(d[sortFeld])
+        : sortFeld === "cover" ? (hatCover(d) ? "Mit Cover" : "Ohne Cover")
         : sortFeld === "bewertung" ? (parseInt(d.bewertung, 10) ? parseInt(d.bewertung, 10) + (parseInt(d.bewertung, 10) === 1 ? " Stern" : " Sterne") : "")
         : String(d[sortFeld] ?? "").trim();
       const schluessel = norm(roh);
@@ -1128,10 +1130,10 @@ function baueFilter() {
   optionen($('[data-f="zustand"]'), ZUSTAND, "alle");
   const s = $("#sortFeld");
   const KURZ = { band: "Band", jahr: "Pressung", orig_jahr: "Original", katalognr: "Katalog", preis: "EK-Preis", marktwert: "Marktwert" };   // kurze Namen, damit sie in die Sortierzeile passen
-  FELDER.filter(f => f[0] !== "notizen").forEach(([k, n]) => {
+  FELDER.filter(f => !["notizen", "format", "label", "anzahl", "land", "katalognr", "barcode"].includes(f[0])).forEach(([k, n]) => {
     const o = document.createElement("option"); o.value = k; o.textContent = KURZ[k] || n; o.title = n; s.appendChild(o);
   });
-  [["bewertung", "Bewertung"], ["angelegt", "Hinzugefügt"], ["geaendert", "Geändert"]].forEach(([v, t]) => {
+  [["bewertung", "Bewertung"], ["angelegt", "Hinzugefügt"], ["geaendert", "Geändert"], ["cover", "Cover"]].forEach(([v, t]) => {
     const o = document.createElement("option"); o.value = v; o.textContent = t; s.appendChild(o);
   });
   const bf = $('[data-f="bewertung"]');
@@ -1140,6 +1142,7 @@ function baueFilter() {
   });
   s.onchange = () => {
     sortFeld = s.value;
+    if (sortFeld === "cover") coverPruefen();   // erst online prüfen, ob die gespeicherten Cover wirklich existieren
     if (sortFeld === "angelegt" || sortFeld === "geaendert") rueckwaerts = true;   // neueste zuerst
     const t = $("#sortRichtung"); t.textContent = rueckwaerts ? "↓" : "↑"; t.title = rueckwaerts ? "Absteigend" : "Aufsteigend";
     t.setAttribute("aria-label", rueckwaerts ? "Absteigend sortiert – tippen für aufsteigend" : "Aufsteigend sortiert – tippen für absteigend");
