@@ -320,6 +320,13 @@
   .scanlinks { display: flex; justify-content: center; gap: 22px; margin-top: 8px; }
   #ocrDlg label { margin-bottom: 2px; } #ocrDlg #ocrChips { margin-top: 4px; }
   .ocrzeile { margin: 0 0 6px; }
+  #zufallKarte { display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center; padding: 6px 0 4px; }
+  #zufallKarte .cover { width: min(62vw, 240px); height: min(62vw, 240px); border-radius: 12px; font-size: 64px; box-shadow: 0 0 22px 4px var(--glow); }
+  #zufallKarte b { font-size: 1.3rem; margin-top: 12px; } #zufallKarte .alb { font-size: 1.1rem; }
+  #zufallKarte .meta { color: var(--muted); font-size: .9rem; } #zufallKarte .zeilechips { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 6px; }
+  #zufallKarte.neu { animation: zuf .45s ease; } @keyframes zuf { from { opacity: 0; transform: scale(.92) rotate(-2deg); } to { opacity: 1; transform: none; } }
+  @media (prefers-reduced-motion: reduce) { #zufallKarte.neu { animation: none; } }
+  #zufallBtn { font-size: 1.1rem; }
   .linkbtn { background: transparent; border: 0; color: var(--akz-hell); padding: 8px 4px; font-size: .92rem; }
 </style>
 </head>
@@ -374,6 +381,7 @@
     <label for="sortFeld">Sortieren</label>
     <select id="sortFeld"></select>
     <button id="sortRichtung" type="button" aria-label="Aufsteigend sortiert – tippen für absteigend" title="Aufsteigend">↑</button>
+      <button id="zufallBtn" type="button" aria-label="Zufallsplatte" title="Zufallsplatte – was höre ich heute?">🎲</button>
       <button id="ansichtWechsel" type="button" aria-label="Ansicht wechseln" title="Ansicht wechseln">▦</button>
   </div>
 </div>
@@ -461,7 +469,7 @@
   <div class="eseite" data-seite="ueber" hidden>
     <div class="ekarte">
       <b id="ueberZahlen"></b>
-      <span class="hinweis" id="ueberVersion" style="display:block;margin:2px 0 0">Version 44 (Cover-Foto lesen)</span>
+      <span class="hinweis" id="ueberVersion" style="display:block;margin:2px 0 0">Version 45 (Zufallsplatte)</span>
       <p class="hinweis">Die Daten liegen in diesem Browser und – wenn Google Drive verbunden ist – zusätzlich in deinem Drive. Mit „Sync-Datei exportieren“ kannst du jederzeit eine Sicherung ziehen.</p>
     </div>
   </div>
@@ -526,6 +534,15 @@
     </div>
   </div>
   <input id="ocrWahl" type="file" accept="image/*" hidden>
+</dialog>
+<dialog id="zufallDlg">
+  <div class="dkopf"><h2>Was höre ich heute?</h2><button type="button" id="zufallX" aria-label="Schließen">✕</button></div>
+  <div id="zufallKarte"></div>
+  <p class="hinweis" id="zufallHinweis" style="text-align:center"></p>
+  <div class="aktionen" style="justify-content:center">
+    <button type="button" id="zufallNochmal" class="primary">🎲 Nochmal würfeln</button>
+    <button type="button" id="zufallOeffnen">Ansehen</button>
+  </div>
 </dialog>
 <datalist id="genreListe"></datalist>
 <datalist id="haendlerListe"></datalist>
@@ -958,6 +975,31 @@ $("#loeschen").onclick = async () => {
   });
 };
 $("#neu").onclick = () => scanStart();   // Plus öffnet direkt den Barcode-Scan; „Von Hand eintragen“ führt zum Formular
+
+// ---------- Zufallsplatte ----------
+let zufallUid = null;
+function zufallZiehen() {
+  const pool = gefiltert();   // aus der aktuellen Auswahl (Filter/Suche), damit man z. B. erst nach Genre eingrenzen kann
+  const box = $("#zufallKarte"); box.replaceChildren();
+  if (!pool.length) { $("#zufallHinweis").textContent = "Keine Platte in der aktuellen Auswahl."; $("#zufallNochmal").disabled = $("#zufallOeffnen").disabled = true; zufallUid = null; return; }
+  $("#zufallNochmal").disabled = pool.length < 2; $("#zufallOeffnen").disabled = false;
+  const kandidaten = pool.length > 1 ? pool.filter(d => d.uid !== zufallUid) : pool;   // nicht zweimal dieselbe hintereinander
+  const d = kandidaten[Math.floor(Math.random() * kandidaten.length)]; zufallUid = d.uid;
+  const el = (t, c, x) => { const e = document.createElement(t); if (c) e.className = c; if (x != null) e.textContent = x; return e; };
+  box.append(coverElement(d), el("b", "", d.band), el("span", "alb", d.album));
+  const info = [d.genre, d.jahr || d.orig_jahr, d.format].filter(Boolean).join(" · "); if (info) box.append(el("span", "meta", info));
+  const chips = el("div", "zeilechips");
+  if (d.zustand) chips.append(el("span", "zchip", zustandNeu(d.zustand)));
+  const sb = parseInt(d.bewertung, 10); if (sb >= 1 && sb <= 5) chips.append(el("span", "sterne", sterneText(sb)));
+  if (d.marktwert) chips.append(el("span", "zchip", "≈ " + d.marktwert + " €"));
+  if (chips.children.length) box.append(chips);
+  box.classList.remove("neu"); void box.offsetWidth; box.classList.add("neu");
+  $("#zufallHinweis").textContent = pool.length + (pool.length === 1 ? " Platte" : " Platten") + " in der Auswahl";
+}
+$("#zufallBtn").onclick = () => { zufallUid = null; zufallZiehen(); $("#zufallDlg").showModal(); };
+$("#zufallNochmal").onclick = zufallZiehen;
+$("#zufallX").onclick = () => $("#zufallDlg").close();
+$("#zufallOeffnen").onclick = () => { const u = zufallUid; $("#zufallDlg").close(); if (u) oeffne(u); };
 
 // ---------- Statistik ----------
 function renderStatistik() {
