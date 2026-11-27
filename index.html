@@ -272,6 +272,19 @@
   #formGrid { display: block; margin-top: 4px; }
   .sec { background: #17171c; border: 1px solid #25252c; border-radius: 14px; padding: 12px 14px 8px; margin-bottom: 10px; display: grid; grid-template-columns: 1fr 1fr; gap: 6px 14px; }
   .sec .full { grid-column: 1 / -1; }
+  .fchips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .fchips button { border-radius: 999px; padding: 5px 11px; font-size: .8rem; background: #1f1f26; border: 1px solid #34343c; color: var(--muted); }
+  .fchips button.an { border-color: var(--akz-hell); color: var(--akz-hell); background: #26222c; }
+  .fgal { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 4px 0 6px; }
+  .ft { position: relative; aspect-ratio: 1; border-radius: 10px; overflow: hidden; background: #101014; border: 1px solid #34343c; padding: 0; cursor: pointer; }
+  .ft img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .ft span { position: absolute; left: 0; right: 0; bottom: 0; font-size: .68rem; padding: 10px 5px 3px; background: linear-gradient(transparent, rgba(0,0,0,.8)); color: #fff; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ft.neu { border: 2px dashed #4a4a55; background: transparent; color: var(--akz-hell); font-size: 1.8rem; display: flex; align-items: center; justify-content: center; }
+  dialog.fotodlg { width: min(94vw, 560px); }
+  #fotoBig { width: 100%; max-height: 62vh; object-fit: contain; border-radius: 10px; background: #000; display: block; margin-bottom: 8px; }
+  #fotoText { width: 100%; box-sizing: border-box; }
+  .fotoz { white-space: nowrap; }
+
   .sec h4 { grid-column: 1 / -1; margin: 0 0 2px; font-size: .74rem; letter-spacing: .14em; text-transform: uppercase; color: var(--akz-hell); }
   .sec input, .sec select, .sec textarea { background: transparent; border: 0; border-bottom: 1px solid #34343c; border-radius: 0; padding: 6px 0 7px; }
   .sec input:focus, .sec select:focus, .sec textarea:focus { outline: none; border-bottom-color: var(--akz-hell); }
@@ -584,7 +597,7 @@
   <div class="eseite" data-seite="ueber" hidden>
     <div class="ekarte">
       <b id="ueberZahlen"></b>
-      <span class="hinweis" id="ueberVersion" style="display:block;margin:2px 0 0">Version 61 (Eigener Titel-Reiter)</span>
+      <span class="hinweis" id="ueberVersion" style="display:block;margin:2px 0 0">Version 62 (Fotos)</span>
       <p class="hinweis">Die Daten liegen in diesem Browser und – wenn Google Drive verbunden ist – zusätzlich in deinem Drive. Mit „Sync-Datei exportieren“ kannst du jederzeit eine Sicherung ziehen.</p>
     </div>
   </div>
@@ -624,6 +637,13 @@
         </div>
         <input id="coverWahl" type="file" accept="image/*" hidden>
         <p class="hinweis full">Beim Scannen/Online-Suchen wird das Cover automatisch geladen, falls es eins gibt. Du kannst auch ein eigenes Foto machen oder aus der Galerie nehmen.</p>
+      </div>
+      <div class="sec" data-tab="foto">
+        <h4>Weitere Fotos</h4>
+        <div class="full fchips" id="fotoArten"></div>
+        <div class="full fgal" id="fotoGal"></div>
+        <input id="galWahl" type="file" accept="image/*" multiple hidden>
+        <p class="hinweis full">Erst die Art wählen (z. B. Signatur), dann „+“ tippen. Diese Fotos bleiben nur auf diesem Gerät – sie sind nicht im Drive-Abgleich und nicht in der Sync-Datei.</p>
       </div>
     </div>
     <div class="aktionen untenleiste">
@@ -693,6 +713,18 @@
   <div class="scanlinks" style="margin-top:0"><button type="button" id="scanOhneCode" class="linkbtn">🖼 Ohne Barcode: Cover fotografieren</button></div>
   <input id="fotoWahl" type="file" accept="image/*" capture="environment" hidden>
 </dialog>
+<dialog id="fotoDlg" class="fotodlg">
+  <img id="fotoBig" alt="">
+  <input id="fotoText" type="text" placeholder="Beschriftung (z. B. Signatur von …)" maxlength="80">
+  <div class="aktionen" style="margin-top:8px">
+    <button type="button" id="fotoPrev" aria-label="Vorheriges">‹</button>
+    <button type="button" id="fotoNext" aria-label="Nächstes">›</button>
+    <span class="spacer"></span>
+    <button type="button" id="fotoDel" class="danger" aria-label="Foto löschen">🗑</button>
+    <button type="button" id="fotoZu" class="primary">Fertig</button>
+  </div>
+</dialog>
+
 <dialog id="frageDlg">
   <p id="frageText" style="margin:0 0 4px; white-space: pre-line"></p>
   <div class="aktionen" id="frageKnoepfe" style="flex-direction: column"></div>
@@ -745,6 +777,116 @@ function neueUid() {
     const r = Math.random() * 16 | 0; return (c === "x" ? r : (r & 3 | 8)).toString(16);
   });
 }
+// ---------- Weitere Fotos (nur auf diesem Gerät: IndexedDB) ----------
+const FOTO_META = "plattenarchiv-fotos", FOTO_ARTEN = ["Rückseite", "Signatur", "Label", "Zustand", "Beilage"];
+let fotoArt = "Rückseite", formNeuUid = null, dlgGespeichert = false, fotoGeaendert = false, fotoUrls = [], fotoAkt = { liste: [], i: 0, url: "" };
+function fotoMeta() { try { return JSON.parse(localStorage.getItem(FOTO_META)) || {}; } catch (e) { return {}; } }
+function fotoMetaSpeichern(m) { try { localStorage.setItem(FOTO_META, JSON.stringify(m)); } catch (e) { toast("Foto-Info konnte nicht gespeichert werden."); } }
+function fotoListe(uid) { return uid ? fotoMeta()[uid] || [] : []; }
+function fotoUid() { return aktuelleUid || formNeuUid; }
+function idb(modus, fn) {
+  return new Promise((res, rej) => {
+    const r = indexedDB.open("plattenarchiv-fotos", 1);
+    r.onupgradeneeded = () => r.result.createObjectStore("fotos", { keyPath: "id" });
+    r.onerror = () => rej(r.error);
+    r.onsuccess = () => {
+      const db = r.result, t = db.transaction("fotos", modus); let q;
+      try { q = fn(t.objectStore("fotos")); } catch (e) { db.close(); rej(e); return; }
+      t.oncomplete = () => { db.close(); res(q && q.result); };
+      t.onerror = t.onabort = () => { db.close(); rej(t.error); };
+    };
+  });
+}
+async function bildVerkleinern(file, maxSeite, qual) {
+  let bmp;
+  try { bmp = await createImageBitmap(file); }
+  catch (e) {
+    bmp = await new Promise((res, rej) => { const im = new Image(), u = URL.createObjectURL(file); im.onload = () => { URL.revokeObjectURL(u); res(im); }; im.onerror = rej; im.src = u; });
+  }
+  const w = bmp.width || bmp.naturalWidth, h = bmp.height || bmp.naturalHeight, f = Math.min(1, maxSeite / Math.max(w, h));
+  const c = document.createElement("canvas"); c.width = Math.max(1, Math.round(w * f)); c.height = Math.max(1, Math.round(h * f));
+  c.getContext("2d").drawImage(bmp, 0, 0, c.width, c.height);
+  return new Promise(res => c.toBlob(b => res(b), "image/jpeg", qual));
+}
+async function fotoHinzu(file, art) {
+  const uid = fotoUid(); if (!uid) return;
+  const [blob, thumb] = [await bildVerkleinern(file, 1200, 0.8), await bildVerkleinern(file, 240, 0.7)];
+  const id = neueUid();
+  await idb("readwrite", st => st.put({ id, uid, blob, thumb }));
+  const m = fotoMeta(); (m[uid] = m[uid] || []).push({ id, art, text: "" }); fotoMetaSpeichern(m);
+  fotoGeaendert = true;
+  try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) {}
+}
+async function fotoLoeschen(uid, id) {
+  try { await idb("readwrite", st => st.delete(id)); } catch (e) {}
+  const m = fotoMeta(); if (m[uid]) { m[uid] = m[uid].filter(x => x.id !== id); if (!m[uid].length) delete m[uid]; fotoMetaSpeichern(m); }
+  fotoGeaendert = true;
+}
+async function fotosAllesWeg(uid) {
+  for (const f of fotoListe(uid)) { try { await idb("readwrite", st => st.delete(f.id)); } catch (e) {} }
+  const m = fotoMeta(); delete m[uid]; fotoMetaSpeichern(m);
+}
+function fotoArtenZeichnen() {
+  const box = $("#fotoArten"); box.innerHTML = "";
+  FOTO_ARTEN.forEach(a => { const b = document.createElement("button"); b.type = "button"; b.textContent = a; b.className = a === fotoArt ? "an" : "";
+    b.onclick = () => { fotoArt = a; fotoArtenZeichnen(); }; box.appendChild(b); });
+}
+async function fotoGalerie() {
+  const box = $("#fotoGal"); fotoUrls.forEach(u => URL.revokeObjectURL(u)); fotoUrls = []; box.innerHTML = "";
+  const uid = fotoUid(), liste = fotoListe(uid);
+  for (const f of liste) {
+    const b = document.createElement("button"); b.type = "button"; b.className = "ft";
+    try {
+      const r = await idb("readonly", st => st.get(f.id));
+      if (r) { const im = document.createElement("img"), u = URL.createObjectURL(r.thumb || r.blob); fotoUrls.push(u); im.src = u; im.alt = f.art; b.appendChild(im); }
+    } catch (e) {}
+    const sp = document.createElement("span"); sp.textContent = f.text || f.art; b.appendChild(sp);
+    b.onclick = () => fotoZeigen(liste.indexOf(f));
+    box.appendChild(b);
+  }
+  const neu = document.createElement("button"); neu.type = "button"; neu.className = "ft neu"; neu.textContent = "+"; neu.setAttribute("aria-label", "Foto hinzufügen");
+  neu.onclick = () => { $("#galWahl").value = ""; $("#galWahl").click(); };
+  box.appendChild(neu);
+}
+$("#galWahl").onchange = async e => {
+  const dateien = [...e.target.files]; if (!dateien.length) return;
+  let n = 0;
+  for (const f of dateien) { try { await fotoHinzu(f, fotoArt); n++; } catch (err) { toast("Foto konnte nicht gespeichert werden (Speicher voll oder Format?)."); } }
+  if (n) toast(n + (n > 1 ? " Fotos" : " Foto") + " gespeichert (" + fotoArt + ").");
+  fotoGalerie();
+};
+async function fotoZeigen(i) {
+  const uid = fotoUid(), liste = fotoListe(uid); if (!liste.length) { $("#fotoDlg").close(); return; }
+  i = (i + liste.length) % liste.length; const f = liste[i];
+  fotoAkt = { liste, i, url: fotoAkt.url, uid };
+  try {
+    const r = await idb("readonly", st => st.get(f.id)); if (fotoAkt.url) URL.revokeObjectURL(fotoAkt.url);
+    fotoAkt.url = r ? URL.createObjectURL(r.blob) : ""; $("#fotoBig").src = fotoAkt.url;
+  } catch (e) {}
+  $("#fotoText").value = f.text || ""; $("#fotoText").placeholder = f.art + " – Beschriftung (optional)";
+  $("#fotoPrev").style.visibility = $("#fotoNext").style.visibility = liste.length > 1 ? "" : "hidden";
+  if (!$("#fotoDlg").open) $("#fotoDlg").showModal();
+}
+function fotoTextSichern() {
+  const { uid, i } = fotoAkt; if (!uid) return;
+  const m = fotoMeta(), l = m[uid]; if (!l || !l[i]) return;
+  const t = $("#fotoText").value.trim(); if (l[i].text !== t) { l[i].text = t; fotoMetaSpeichern(m); fotoGeaendert = true; }
+}
+$("#fotoPrev").onclick = () => { fotoTextSichern(); fotoZeigen(fotoAkt.i - 1); };
+$("#fotoNext").onclick = () => { fotoTextSichern(); fotoZeigen(fotoAkt.i + 1); };
+$("#fotoZu").onclick = () => $("#fotoDlg").close();
+$("#fotoDlg").addEventListener("close", () => { fotoTextSichern(); if (fotoAkt.url) { URL.revokeObjectURL(fotoAkt.url); fotoAkt.url = ""; } $("#fotoBig").removeAttribute("src"); fotoGalerie(); });
+$("#fotoDel").onclick = async () => {
+  const f = fotoAkt.liste[fotoAkt.i]; if (!f) return;
+  if (await frage("Dieses Foto löschen?", ["Löschen", "Abbrechen"]) !== 0) return;
+  await fotoLoeschen(fotoAkt.uid, f.id); toast("Foto gelöscht.");
+  if (fotoListe(fotoAkt.uid).length) fotoZeigen(Math.min(fotoAkt.i, fotoListe(fotoAkt.uid).length - 1)); else $("#fotoDlg").close();
+};
+$("#dlg").addEventListener("close", async () => {
+  if (formNeuUid && !dlgGespeichert) await fotosAllesWeg(formNeuUid);   // abgebrochene neue Platte: Fotos nicht liegen lassen
+  if (fotoGeaendert) { fotoGeaendert = false; render(); }
+  formNeuUid = null;
+});
 // Offene Dialoge liegen über allem – Hinweise müssen deshalb in den obersten Dialog gehängt werden.
 function obersterContainer() { return [...document.querySelectorAll("dialog[open]")].pop() || document.body; }
 function toast(text) {
@@ -873,7 +1015,8 @@ function render() {
     const stueck = parseInt(d.anzahl, 10) || 1;
     const fehlt = fehlendes(d);
     const jahrText = d.orig_jahr && d.jahr && d.orig_jahr !== d.jahr ? d.orig_jahr + " (Pr. " + d.jahr + ")" : (d.orig_jahr || d.jahr || "");
-    const meta = [jahrText, d.format].filter(Boolean).join(" · ");   // Genre steht als Chip darunter
+    const nf = fotoListe(d.uid).length;
+    const meta = [jahrText, d.format, nf ? "📷 " + nf : ""].filter(Boolean).join(" · ");   // Genre steht als Chip darunter
     const bandNoetig = !(gruppieren && sortFeld === "band");   // steht die Band schon als Überschrift da, entfällt die doppelte Zeile
     const mkBadge = () => { const bd = document.createElement("span"); bd.className = "badge"; bd.textContent = stueck + "×"; bd.title = stueck + "× vorhanden"; return bd; };
     const warn = () => { const w = document.createElement("span"); w.className = "fehlt"; w.textContent = "!"; w.title = "Es fehlt noch: " + fehlt.join(", ");
@@ -1077,7 +1220,7 @@ function wunschZeigen() {
   $("#dlgTitel").textContent = aktuelleUid ? (formWunsch ? "Wunschlisten-Platte bearbeiten" : "Platte bearbeiten") : (formWunsch ? "Neu auf der Wunschliste" : "Neue Platte");
 }
 function oeffne(uid) {
-  aktuelleUid = uid || null;
+  aktuelleUid = uid || null; formNeuUid = uid ? null : neueUid(); dlgGespeichert = false; fotoGeaendert = false; fotoArt = "Rückseite";
   const d = uid ? daten.find(x => x.uid === uid) : null;
   KEYS.forEach(k => { $("#f_" + k).value = d ? (k === "zustand" ? zustandNeu(d[k]) : (d[k] || "")) : ""; });
   formBewertung = d ? Math.min(5, parseInt(d.bewertung, 10) || 0) : 0; sterneZeigen();
@@ -1095,7 +1238,7 @@ function oeffne(uid) {
   coverVorschau();
   $("#loeschen").style.display = d ? "" : "none";
   $(".ocrzeile").style.display = uid ? "none" : "";   // Cover-Foto-Texterkennung nur beim Neuanlegen
-  zustandChips(); fundZeigen(); dlgReiter("basis");
+  zustandChips(); fundZeigen(); dlgReiter("basis"); fotoArtenZeichnen(); fotoGalerie();
   $("#dlg").showModal();
 }
 // ---------- Doppelte erkennen ----------
@@ -1172,7 +1315,7 @@ $("#form").addEventListener("submit", async e => {
       }
       if (wahl !== 1) return;
     }
-    neuUid = neueUid();
+    neuUid = formNeuUid || neueUid(); dlgGespeichert = true;
     daten.push({ uid: neuUid, geaendert: Date.now(), geloescht: false, ...werte, angelegt: String(Date.now()) });
   } else Object.assign(daten.find(x => x.uid === aktuelleUid), werte, { geaendert: Date.now() });
   speichern(); render(); $("#dlg").close();
