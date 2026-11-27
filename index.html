@@ -297,7 +297,10 @@
   .rundbtn.an { background: var(--accent); border-color: var(--accent); box-shadow: 0 0 12px var(--glow); }
   .scanText { text-align: center; min-height: 2.6em; margin: 8px 0 4px; }
   #kamPanel { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 10px 12px; margin: 4px 0 8px; }
-  #kamPanel .hinweis { margin: 4px 0 0; font-size: .78rem; }
+  #kamPanel .hinweis { margin: 6px 0 0; font-size: .78rem; }
+  #kamChips { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 8px; }
+  #kamChips span { text-align: center; padding: 5px 2px; border-radius: 8px; font-size: .74rem; background: var(--field); border: 1px solid var(--line); color: var(--muted); white-space: nowrap; }
+  #kamChips span.ja { color: var(--akz-hell); border-color: rgba(79,184,174,.5); }
   .nummernzeile { margin: 6px 0 4px; } .nummernzeile input { flex: 1 1 auto; min-width: 0; } .nummernzeile button { padding: 10px 18px; }
   .scanlinks { display: flex; justify-content: center; gap: 22px; margin-top: 8px; }
   .linkbtn { background: transparent; border: 0; color: var(--akz-hell); padding: 8px 4px; font-size: .92rem; }
@@ -509,6 +512,7 @@
       <label class="regler" hidden>Helligkeit <input type="range" id="belichtungRegler"></label>
       <label class="regler" hidden>Schärfe <input type="range" id="fokusRegler"></label>
     </div>
+    <div id="kamChips"></div>
     <p class="hinweis" id="kamInfo"></p>
   </div>
   <div class="row nummernzeile">
@@ -1594,8 +1598,9 @@ function kamDiagnose(caps) {
   const ja = x => x ? "✓" : "✗";
   const hell = caps.exposureCompensation && caps.exposureCompensation.max > caps.exposureCompensation.min || caps.exposureTime && caps.exposureTime.max > caps.exposureTime.min;
   const fokus = caps.focusDistance && caps.focusDistance.max > caps.focusDistance.min && (caps.focusMode || []).includes("manual");
-  $("#kamInfo").textContent = "Deine Kamera bietet über den Browser: Zoom " + ja(caps.zoom && caps.zoom.max > caps.zoom.min) + " · Helligkeit " + ja(hell) +
-    " · Schärfe " + ja(fokus) + " · Licht " + ja(caps.torch) + ". Ein ✗ heißt: Handy oder Browser geben diese Funktion nicht frei – das lässt sich nicht einstellen.";
+  const teile = [["Zoom", caps.zoom && caps.zoom.max > caps.zoom.min], ["Helligkeit", hell], ["Schärfe", fokus], ["Licht", caps.torch]];
+  $("#kamChips").replaceChildren(...teile.map(([n, ok]) => { const e = document.createElement("span"); e.className = ok ? "ja" : "nein"; e.textContent = (ok ? "✓ " : "✗ ") + n; return e; }));
+  $("#kamInfo").textContent = teile.every(t => t[1]) ? "" : "✗ = Handy oder Browser geben diese Funktion nicht frei.";
   kamFehlerGemeldet = false;
 }
 function reglerVorbereiten(track, caps) {
