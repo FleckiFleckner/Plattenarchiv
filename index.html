@@ -1434,12 +1434,16 @@ function ausDiscogs(x) {   // Treffer der Discogs-Suche in dieselbe Form wie ein
 }
 async function sucheDiscogsBarcode(code) {
   const t = discogsToken(); if (!t) return { liste: [], keinToken: true };
-  const versuche = [code];
-  if (code.length === 13 && code[0] === "0") versuche.push(code.slice(1));
-  if (code.length === 12) versuche.push("0" + code);
-  for (const c of versuche) {
-    const r = await fetch("https://api.discogs.com/database/search?type=release&per_page=8&barcode=" +
-      encodeURIComponent(c) + "&token=" + encodeURIComponent(t));
+  const codes = [code];
+  if (code.length === 13 && code[0] === "0") codes.push(code.slice(1));
+  if (code.length === 12) codes.push("0" + code);
+  // Discogs speichert Barcodes oft mit Leerzeichen („8 88751 11751 8“) – deshalb auch gruppiert und per Volltextsuche versuchen
+  const upc = codes.find(c => c.length === 12);
+  const versuche = codes.map(c => "barcode=" + encodeURIComponent(c));
+  if (upc) versuche.push("barcode=" + encodeURIComponent(upc[0] + " " + upc.slice(1, 6) + " " + upc.slice(6, 11) + " " + upc[11]));
+  codes.forEach(c => versuche.push("q=" + encodeURIComponent(c)));
+  for (const v of versuche) {
+    const r = await fetch("https://api.discogs.com/database/search?type=release&per_page=8&" + v + "&token=" + encodeURIComponent(t));
     if (!r.ok) throw new Error("Discogs-Suche: Fehler " + r.status);
     const d = await r.json();
     if (d.results && d.results.length) return { liste: d.results.map(ausDiscogs) };
