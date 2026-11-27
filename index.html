@@ -223,6 +223,46 @@
   .untenleiste { position: sticky; bottom: -16px; margin: 14px -16px -16px; padding: 12px 16px; background: var(--bg); border-top: 1px solid #25252c; z-index: 2; }
   .untenleiste button.primary { flex: 1 1 auto; padding: 12px; }
 
+  /* Platte hinzufügen / bearbeiten: Kopfkarte, Reiter, Chips */
+  .dkopf { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
+  .dkopf h2 { margin: 0; }
+  #dlgX { width: 34px; height: 34px; padding: 0; border-radius: 10px; }
+  .fund { display: flex; gap: 12px; align-items: center; padding: 10px; border-radius: 14px; background: linear-gradient(120deg, rgba(182,85,216,.20), rgba(79,184,174,.16)); border: 1px solid var(--line); }
+  .fund #coverVorschau { cursor: pointer; }
+  .fund .cover { width: 60px; height: 60px; }
+  .fundtext { min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+  .fundtext b { font-size: 1.05rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .fundtext span { color: var(--muted); font-size: .9rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .fundtext #fundWert { color: var(--akz-hell); font-size: .82rem; }
+  .dtabs { display: flex; gap: 4px; padding: 3px; margin: 10px 0; background: var(--seg-bg); border-radius: 12px; }
+  .dtabs button { flex: 1; background: transparent; border: 0; padding: 8px 4px; border-radius: 9px; color: var(--muted); font-weight: 600; font-size: .9rem; }
+  .dtabs button.on { background: var(--seg-on); color: var(--text); }
+  #dBody [data-tab] { display: none; }
+  #dBody.t-basis [data-tab="basis"], #dBody.t-details [data-tab="details"], #dBody.t-wert [data-tab="wert"], #dBody.t-foto [data-tab="foto"] { display: grid; }
+  #dBody > details[data-tab], #dBody > p[data-tab] { }
+  #dBody.t-basis details[data-tab="basis"], #dBody.t-wert details[data-tab="wert"] { display: block; }
+  #dBody.t-basis p[data-tab="basis"] { display: block; }
+  #dBody .aktionen[data-tab] { display: none; }
+  #dBody.t-basis .aktionen[data-tab="basis"], #dBody.t-wert .aktionen[data-tab="wert"] { display: flex; }
+  #dBody [hidden] { display: none !important; }
+  #dlg[open] { display: flex; flex-direction: column; height: min(94vh, 800px); overflow: hidden; }   /* feste Höhe: Fenster springt beim Reiterwechsel nicht */
+  #dlg #form { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+  #dlg #dBody { flex: 1; min-height: 0; overflow-y: auto; align-content: start; }
+  #dlg .untenleiste { position: static; margin: 10px 0 0; padding: 12px 0 0; }
+  #dBody .sec { padding: 10px 14px 6px; gap: 2px 14px; margin-bottom: 8px; }
+  #dBody .sec label { margin: 0; line-height: 1.2; }
+  #dBody .sec input, #dBody .sec select { padding: 3px 0 4px; min-height: 30px; }
+  #dBody .chips { gap: 5px; padding: 4px 0 4px; } #dBody .chips button { padding: 6px 10px; font-size: .8rem; }
+  #dBody .sterneWahl button { padding: 0 6px; font-size: 1.4rem; }
+  .bewZeile { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  @media (max-height: 800px) { .fund { padding: 6px 8px; } .fund .cover { width: 44px; height: 44px; font-size: 20px; } .dkopf { margin-bottom: 6px; } .dtabs { margin: 6px 0; } #dBody .info { display: none; } }
+  .sec .full.aktionen { flex-wrap: nowrap; } .sec .full.aktionen button { flex: 1; }
+  .suchzeile { margin: 0 0 6px; flex-wrap: nowrap; } .suchzeile button { flex: 1; white-space: nowrap; padding: 9px 6px; font-size: .88rem; }
+  .info summary { font-size: .82rem; padding: 2px 0; } .info { margin: 0 0 8px; }
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; padding: 4px 0 6px; }
+  .chips button { padding: 7px 12px; border-radius: 999px; font-size: .85rem; }
+  .chips button.on { border-color: var(--accent); background: rgba(182,85,216,.22); box-shadow: 0 0 10px rgba(182,85,216,.35); }
+  #loeschen { padding: 10px 14px; }
   /* Sortierleiste im Stil der Liste */
   .sortzeile { padding: 0 16px 10px; }
   .sortsteuerung { display: flex; align-items: center; gap: 4px; background: var(--seg-bg); border-radius: 12px; padding: 3px 3px 3px 14px; }
@@ -393,30 +433,41 @@
 
 <dialog id="dlg">
   <form method="dialog" id="form">
-    <h2 id="dlgTitel">Neue Platte</h2>
-    <div class="aktionen" style="margin:0 0 6px">
-      <button type="button" id="btnScan">📷 Barcode scannen</button>
-      <button type="button" id="btnOnline">🔎 Online suchen</button>
+    <div class="dkopf"><h2 id="dlgTitel">Neue Platte</h2><button type="button" id="dlgX" aria-label="Schließen">✕</button></div>
+    <div class="fund">
+      <div id="coverVorschau" title="Cover ändern"></div>
+      <div class="fundtext"><b id="fundBand">Neue Platte</b><span id="fundAlbum"></span><span id="fundWert"></span></div>
     </div>
-    <p class="hinweis" style="margin:0 0 8px">Daten kommen aus der Datenbank MusicBrainz – bitte kurz prüfen.
-      „Online suchen“ nutzt die Felder Band und/oder Album.</p>
-    <div class="grid" id="formGrid"></div>
-    <div class="aktionen" style="margin:8px 0 0"><button type="button" id="mwBtn">↻ Marktwert von Discogs holen</button></div>
-    <p class="hinweis">Marktwert = günstigstes aktuelles Angebot bei Discogs (Richtwert, kein garantierter Verkaufspreis).
-      Gleiche Platte doppelt? Erhöhe die Anzahl. Limited Editions mit eigenem Barcode legst du als eigenen Eintrag an.</p>
-    <div class="row" style="margin-top:10px">
-      <div id="coverVorschau"></div>
-      <div class="aktionen" style="margin:0">
-        <button type="button" id="coverFoto">📷 Cover-Bild wählen</button>
-        <button type="button" id="coverWeg">Entfernen</button>
+    <div class="dtabs" id="dtabs" role="tablist">
+      <button type="button" data-t="basis" class="on">Basis</button>
+      <button type="button" data-t="details">Details</button>
+      <button type="button" data-t="wert">Wert</button>
+      <button type="button" data-t="foto">Foto</button>
+    </div>
+    <div id="dBody" class="t-basis">
+      <div class="aktionen suchzeile" data-tab="basis">
+        <button type="button" id="btnScan">📷 Barcode scannen</button>
+        <button type="button" id="btnOnline">🔎 Online suchen</button>
       </div>
-      <input id="coverWahl" type="file" accept="image/*" hidden>
+      <details class="info" data-tab="basis"><summary>ⓘ Woher kommen die Daten?</summary>
+        <p class="hinweis">Aus MusicBrainz bzw. Discogs – bitte kurz prüfen. „Online suchen“ nutzt Band und/oder Album. * = Pflichtfeld.</p></details>
+      <div class="grid" id="formGrid"></div>
+      <div class="aktionen" data-tab="wert" style="margin:0"><button type="button" id="mwBtn">↻ Marktwert von Discogs holen</button></div>
+      <details class="info" data-tab="wert"><summary>ⓘ Hinweise zu Marktwert &amp; Anzahl</summary>
+        <p class="hinweis">Marktwert = günstigstes aktuelles Angebot bei Discogs (Richtwert, kein garantierter Verkaufspreis).
+        Gleiche Platte doppelt? Erhöhe die Anzahl. Limited Editions mit eigenem Barcode legst du als eigenen Eintrag an.</p></details>
+      <div class="sec" data-tab="foto">
+        <h4>Cover</h4>
+        <div class="full aktionen" style="margin:0">
+          <button type="button" id="coverFoto">📷 Cover-Bild wählen</button>
+          <button type="button" id="coverWeg">Entfernen</button>
+        </div>
+        <input id="coverWahl" type="file" accept="image/*" hidden>
+        <p class="hinweis full">Beim Scannen/Online-Suchen wird das Cover automatisch geladen, falls es eins gibt. Du kannst auch ein eigenes Foto machen oder aus der Galerie nehmen.</p>
+      </div>
     </div>
-    <p class="hinweis">Beim Scannen/Online-Suchen wird das Cover automatisch geladen, falls es eins gibt.
-      Du kannst auch ein eigenes Foto machen oder aus der Galerie nehmen.</p>
-    <p class="hinweis">* Pflichtfelder: Band, Album, Genre</p>
     <div class="aktionen untenleiste">
-      <button type="button" id="loeschen" class="danger">Löschen</button>
+      <button type="button" id="loeschen" class="danger" aria-label="Löschen">🗑</button>
       <span class="spacer"></span>
       <button type="button" id="abbrechen">Abbrechen</button>
       <button type="submit" class="primary">Speichern</button>
@@ -653,16 +704,23 @@ function auswahllistenAktualisieren() {
 // ---------- Formular ----------
 function baueFormular() {
   const grid = $("#formGrid");
-  const ABSCHNITTE = { band: "Pflichtangaben", jahr: "Details", anzahl: "Menge, Preis & Notizen" };
+  // [Schlüssel] → Reiter + Abschnittsüberschrift (beginnt bei diesem Feld einen neuen Abschnitt)
+  const TAB = { band: "basis", album: "basis", genre: "basis", jahr: "basis", format: "basis", zustand: "basis",
+                orig_jahr: "details", label: "details", katalognr: "details", barcode: "details", land: "details", notizen: "details",
+                anzahl: "wert", preis: "wert", marktwert: "wert" };
+  const START = { band: "Pflichtangaben", jahr: "Pressung & Zustand", orig_jahr: "Ausgabe", notizen: "Notizen", anzahl: "Menge & Preis" };
+  const secs = {};
+  const neuerAbschnitt = (tab, titel) => {
+    const sec = document.createElement("div"); sec.className = "sec"; sec.dataset.tab = tab;
+    const h = document.createElement("h4"); h.textContent = titel; sec.appendChild(h); grid.appendChild(sec); return sec;
+  };
   let sec = null;
-  for (const [k, name] of FELDER) {
-    if (ABSCHNITTE[k] || !sec) {
-      sec = document.createElement("div"); sec.className = "sec";
-      const h = document.createElement("h4"); h.textContent = ABSCHNITTE[k] || "Angaben"; sec.appendChild(h);
-      grid.appendChild(sec);
-    }
+  const FOLGE = ["band","album","genre","jahr","format","zustand","orig_jahr","label","katalognr","barcode","land","notizen","anzahl","preis","marktwert"];
+  for (const k of FOLGE) {
+    const name = FELDER.find(f => f[0] === k)[1];
+    if (START[k] || !sec) sec = neuerAbschnitt(TAB[k], START[k] || "Angaben");
     const div = document.createElement("div");
-    if (k === "band" || k === "album" || k === "genre" || k === "notizen") div.className = "full";
+    if (k === "band" || k === "album" || k === "genre" || k === "notizen" || k === "zustand") div.className = "full";
     const lab = document.createElement("label"); lab.textContent = name + (PFLICHT.includes(k) ? " *" : "");
     let el;
     if (k === "format" || k === "zustand") {
@@ -670,7 +728,7 @@ function baueFormular() {
       for (const w of ["", ...(k === "format" ? FORMATE : ZUSTAND)]) {
         const o = document.createElement("option"); o.value = w; o.textContent = w || "–"; el.appendChild(o);
       }
-    } else if (k === "notizen") { el = document.createElement("textarea"); el.rows = 2; }
+    } else if (k === "notizen") { el = document.createElement("textarea"); el.rows = 3; }
     else {
       el = document.createElement("input");
       if (k === "genre") el.setAttribute("list", "genreListe");
@@ -678,13 +736,15 @@ function baueFormular() {
       if (k === "preis" || k === "marktwert") el.inputMode = "decimal";
       if (k === "anzahl" || k === "barcode") el.inputMode = "numeric";
     }
-    el.id = "f_" + k; div.append(lab, el); sec.appendChild(div);
+    el.id = "f_" + k; div.append(lab, el);
+    if (k === "zustand") { el.hidden = true; const ch = document.createElement("div"); ch.className = "chips"; ch.id = "zustandChips"; div.appendChild(ch); }
+    sec.appendChild(div);
   }
-  const bs = document.createElement("div"); bs.className = "sec";
-  bs.innerHTML = '<h4>Meine Bewertung</h4><div class="full"><div class="sterneWahl" id="sterneWahl" role="group" aria-label="Bewertung"></div></div>'
-    + '<div class="full" id="wunschBox"><label for="f_zielpreis">Zielpreis (€)</label><input id="f_zielpreis" inputmode="decimal" placeholder="z. B. 25,00"></div>'
-    + '<div class="full kauf" id="kaufBox"><button type="button" id="gekauft">✓ Gekauft – in die Sammlung übernehmen</button></div>';
-  grid.appendChild(bs);
+  const zd = $("#f_zustand").parentElement.parentElement;   // Bewertung im Abschnitt „Pressung & Zustand“, damit nichts wegscrollt
+  zd.insertAdjacentHTML("beforeend", '<div class="full bewZeile"><label>Meine Bewertung</label><div class="sterneWahl" id="sterneWahl" role="group" aria-label="Bewertung"></div></div>');
+  const ws = neuerAbschnitt("wert", "Wunschliste");
+  ws.insertAdjacentHTML("beforeend", '<div class="full" id="wunschBox"><label for="f_zielpreis">Zielpreis (€)</label><input id="f_zielpreis" inputmode="decimal" placeholder="z. B. 25,00"></div>'
+    + '<div class="full kauf" id="kaufBox"><button type="button" id="gekauft">✓ Gekauft – in die Sammlung übernehmen</button></div>');
   const sw = $("#sterneWahl");
   for (let i = 1; i <= 5; i++) {
     const b = document.createElement("button"); b.type = "button"; b.textContent = "★"; b.setAttribute("aria-label", i + " Sterne");
@@ -692,13 +752,38 @@ function baueFormular() {
     sw.appendChild(b);
   }
   $("#gekauft").onclick = () => {
-    formWunsch = false; wunschZeigen(); $("#f_preis").focus();
+    formWunsch = false; wunschZeigen(); dlgReiter("wert"); $("#f_preis").focus();
     toast("Wird in die Sammlung übernommen – EK-Preis und Zustand ergänzen und speichern.");
   };
 }
+function dlgReiter(t) {
+  $("#dBody").className = "t-" + t;
+  document.querySelectorAll("#dtabs button").forEach(b => b.classList.toggle("on", b.dataset.t === t));
+}
+document.querySelectorAll("#dtabs button").forEach(b => b.onclick = () => dlgReiter(b.dataset.t));
+function zustandChips() {
+  const sel = $("#f_zustand"), box = $("#zustandChips"); box.innerHTML = "";
+  [...sel.options].filter(o => o.value).forEach(o => {
+    const b = document.createElement("button"); b.type = "button"; b.textContent = o.value;
+    if (sel.value === o.value) b.className = "on";
+    b.onclick = () => { sel.value = sel.value === o.value ? "" : o.value; zustandChips(); };
+    box.appendChild(b);
+  });
+}
+function fundZeigen() {
+  const band = $("#f_band").value.trim(), album = $("#f_album").value.trim(), jahr = $("#f_jahr").value.trim(), mw = $("#f_marktwert").value.trim();
+  $("#fundBand").textContent = band || (aktuelleUid ? "Ohne Bandnamen" : "Neue Platte");
+  $("#fundAlbum").textContent = [album, jahr].filter(Boolean).join(" · ");
+  $("#fundWert").textContent = mw ? "≈ " + mw + " € Marktwert" : "";
+}
+$("#form").addEventListener("input", fundZeigen);
+setInterval(() => { if ($("#dlg").open) fundZeigen(); }, 500);   // Scan/Online-Suche/Marktwert füllen Felder per Code
+$("#coverVorschau").onclick = () => $("#coverWahl").click();
+$("#dlgX").onclick = () => $("#dlg").close();
 let formBewertung = 0, formWunsch = false;
 function sterneZeigen() { document.querySelectorAll("#sterneWahl button").forEach((b, i) => b.classList.toggle("an", i < formBewertung)); }
 function wunschZeigen() {
+  $("#wunschBox").parentElement.hidden = !formWunsch;
   $("#wunschBox").style.display = formWunsch ? "" : "none";
   $("#kaufBox").style.display = formWunsch && aktuelleUid ? "" : "none";
   $("#dlgTitel").textContent = aktuelleUid ? (formWunsch ? "Wunschlisten-Platte bearbeiten" : "Platte bearbeiten") : (formWunsch ? "Neu auf der Wunschliste" : "Neue Platte");
@@ -718,6 +803,7 @@ function oeffne(uid) {
   formCover = { foto: d ? d.cover_foto || "" : "", mbid: d ? d.cover_mbid || "" : "", discogs: d ? d.discogs_id || "" : "" };
   coverVorschau();
   $("#loeschen").style.display = d ? "" : "none";
+  zustandChips(); fundZeigen(); dlgReiter("basis");
   $("#dlg").showModal();
 }
 // ---------- Doppelte erkennen ----------
@@ -767,11 +853,11 @@ $("#form").addEventListener("submit", async e => {
   werte.zielpreis = formWunsch ? $("#f_zielpreis").value.trim() : "";
   werte.cover_foto = formCover.foto; werte.cover_mbid = formCover.mbid; werte.discogs_id = formCover.discogs;
   const fehlt = FELDER.filter(([k]) => PFLICHT.includes(k) && !werte[k]).map(f => f[1]);
-  if (fehlt.length) { toast("Bitte ausfüllen: " + fehlt.join(", ")); return; }
+  if (fehlt.length) { dlgReiter("basis"); toast("Bitte ausfüllen: " + fehlt.join(", ")); return; }
   for (const [k, name] of [["jahr", "Jahr (Pressung)"], ["orig_jahr", "Erstveröff. (Album)"]]) {
-    if (werte[k] && !/^\d{4}$/.test(werte[k])) { toast(name + ": bitte vierstellig angeben."); return; }
+    if (werte[k] && !/^\d{4}$/.test(werte[k])) { dlgReiter(k === "jahr" ? "basis" : "details"); toast(name + ": bitte vierstellig angeben."); return; }
   }
-  if (werte.anzahl && !/^[1-9]\d*$/.test(werte.anzahl)) { toast("Anzahl: bitte eine ganze Zahl ab 1 angeben."); return; }
+  if (werte.anzahl && !/^[1-9]\d*$/.test(werte.anzahl)) { dlgReiter("wert"); toast("Anzahl: bitte eine ganze Zahl ab 1 angeben."); return; }
   if (!werte.anzahl) werte.anzahl = "1";
   if (!aktuelleUid) {
     const v = findeVorhanden(werte);
