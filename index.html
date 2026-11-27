@@ -274,6 +274,16 @@
   .sec .full { grid-column: 1 / -1; }
   .mwzeile { display: flex; align-items: flex-end; gap: 8px; } .mwzeile input { flex: 1 1 auto; min-width: 0; }
   .mwklein { flex: none; width: 40px; height: 36px; padding: 0; font-size: 1.15rem; line-height: 1; }
+  #zufallAlt { width: 18px; height: 18px; flex: none; padding: 0; margin: 0; accent-color: var(--akz-hell); }
+  .hoerlabel { display: flex; gap: 8px; justify-content: center; align-items: center; font-size: .85rem; margin: 2px 0 10px; color: #d9d5d0; }
+  #hoerPlus, #hoerNull { white-space: nowrap; flex: none; padding: 8px 12px; }
+  .gruen { background: #2e8b57; border-color: #2e8b57; color: #fff; }
+  .dupkarten { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .dupkarte { text-align: left; display: flex; flex-direction: column; gap: 3px; padding: 10px; border-radius: 12px; background: #17171c; border: 2px solid #34343c; min-width: 0; font-size: .85rem; word-break: break-word; }
+  .dupkarte b { font-size: .95rem; } .dupkarte small { color: var(--muted); }
+  .dupkarte.on { border-color: var(--akz-hell); background: #20202a; }
+  .dupkarte .behalten { color: var(--akz-hell); font-size: .74rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+  #dupDlg .aktionen { flex-direction: column; margin-top: 10px; } #dupDlg .aktionen button { width: 100%; }
   #filterMehr { grid-column: 1 / -1; }
   #filterMehr > summary { display: block; cursor: pointer; color: var(--akz-hell); font-size: .85rem; padding: 4px 0; list-style: none; }
   #filterMehr > summary::-webkit-details-marker { display: none; }
@@ -602,6 +612,7 @@
         <button type="button" id="syncImport">Sync-Datei importieren</button>
       </div>
       <button type="button" id="csvExport">CSV exportieren</button>
+      <button type="button" id="dupStart" style="margin-top:8px">Dubletten prüfen</button>
       <p class="hinweis">Die Sync-Datei ist mit der Desktop-Version kompatibel. Beim Import gewinnt jeweils die neuere Änderung.</p>
       <input id="dateiWahl" type="file" accept=".json,application/json" hidden>
     </div>
@@ -622,7 +633,7 @@
   <div class="eseite" data-seite="ueber" hidden>
     <div class="ekarte">
       <b id="ueberZahlen"></b>
-      <span class="hinweis" id="ueberVersion" style="display:block;margin:2px 0 0">Version 66 (Foto-Reiter kompakt)</span>
+      <span class="hinweis" id="ueberVersion" style="display:block;margin:2px 0 0">Version 67 (Gehört-Zähler & Dubletten)</span>
       <div class="aktionen" style="margin:6px 0"><button type="button" id="hilfeAusEinst">? Was bedeutet was?</button></div>
       <p class="hinweis">Die Daten liegen in diesem Browser und – wenn Google Drive verbunden ist – zusätzlich in deinem Drive. Mit „Sync-Datei exportieren“ kannst du jederzeit eine Sicherung ziehen.</p>
     </div>
@@ -697,10 +708,23 @@
 <dialog id="zufallDlg">
   <div class="dkopf"><h2>Was höre ich heute?</h2><button type="button" id="zufallX" aria-label="Schließen">✕</button></div>
   <div id="zufallKarte"></div>
+  <p class="hinweis" id="zufallGehoert" style="text-align:center;margin:4px 0"></p>
   <p class="hinweis" id="zufallHinweis" style="text-align:center"></p>
+  <div class="aktionen" style="justify-content:center;margin-bottom:6px"><button type="button" id="zufallGehoertBtn" class="gruen">✓ Heute gehört</button></div>
+  <label class="hoerlabel"><input type="checkbox" id="zufallAlt"> Lange nicht gehörte bevorzugen</label>
   <div class="aktionen" style="justify-content:center">
     <button type="button" id="zufallNochmal" class="primary">🎲 Nochmal würfeln</button>
     <button type="button" id="zufallOeffnen">Ansehen</button>
+  </div>
+</dialog>
+<dialog id="dupDlg">
+  <div class="dkopf"><h2>Dubletten prüfen</h2><button type="button" id="dupX" aria-label="Schließen">✕</button></div>
+  <p class="hinweis" id="dupInfo" style="margin:0 0 8px"></p>
+  <div class="dupkarten" id="dupKarten"></div>
+  <div class="aktionen">
+    <button type="button" id="dupMerge" class="primary">Zusammenführen</button>
+    <button type="button" id="dupBeide">Beide behalten</button>
+    <button type="button" id="dupSpaeter">Später entscheiden</button>
   </div>
 </dialog>
 <datalist id="genreListe"></datalist>
@@ -794,7 +818,7 @@ const FELDER = [
   ["land", "Land"], ["anzahl", "Anzahl"], ["preis", "EK-Preis (€)"], ["marktwert", "Marktwert (€, ca.)"], ["notizen", "Notizen"]
 ];   // „preis“ bleibt intern der Schlüssel für den EK-Preis, damit alte Einträge und Sync-Dateien passen
 const KEYS = FELDER.map(f => f[0]);
-const EXTRA = ["cover_mbid", "cover_foto", "discogs_id", "bewertung", "wunsch", "zielpreis", "mw_alt", "mw_datum", "angelegt", "kaufdatum", "haendler", "marken", "tracklist"];   // werden nur mitgeführt und synchronisiert
+const EXTRA = ["cover_mbid", "cover_foto", "discogs_id", "bewertung", "wunsch", "zielpreis", "mw_alt", "mw_datum", "angelegt", "kaufdatum", "haendler", "marken", "tracklist", "gehoert_n", "gehoert_zeit"];   // werden nur mitgeführt und synchronisiert
 const PFLICHT = ["band", "album", "genre"];
 const FORMATE = ["LP", "Doppel-LP", "EP", "Single 7\"", "Maxi 12\"", "Box-Set", "Sonstiges"];
 // Einfache Zustandsstufen. Alte Einträge mit Goldmine-Kürzeln (M, NM, VG+ …) bleiben unverändert gespeichert und werden nur umgedeutet angezeigt.
@@ -1195,6 +1219,8 @@ function baueFormular() {
   }
   { const hj = (id, text) => { const e = grid.querySelector("#f_" + id); if (!e) return; const p = document.createElement("p"); p.className = "hinweis full"; p.textContent = text; e.parentElement.after(p); };
  }
+  const hs = neuerAbschnitt("details", "Gehört");
+  hs.insertAdjacentHTML("beforeend", '<div class="full row" style="gap:8px;align-items:center"><span id="hoerText" class="hinweis" style="flex:1 1 auto;margin:0"></span><button type="button" id="hoerPlus">+ Heute</button><button type="button" id="hoerNull" aria-label="Zähler zurücksetzen">0</button></div>');
   const mk = neuerAbschnitt("details", "Merkmale");
   mk.insertAdjacentHTML("beforeend", '<div class="full"><div class="chips" id="markenChips"></div>'
     + '<div class="row" style="gap:8px"><input id="markeNeu" list="markenDatalist" placeholder="Merkmal hinzufügen (z. B. signiert)" autocomplete="off" style="flex:1 1 auto;min-width:0"><button type="button" id="markeAdd" class="primary" aria-label="Merkmal hinzufügen">+</button></div>'
@@ -1223,7 +1249,7 @@ function baueFormular() {
     if (mwb && mwf) { const box = mwb.parentElement; mwb.textContent = "↻"; mwb.className = "mwklein"; mwb.title = mwb.ariaLabel = "Marktwert von Discogs neu holen";
       const zeile = document.createElement("div"); zeile.className = "mwzeile"; mwf.before(zeile); zeile.append(mwf, mwb); box.remove(); } }
   document.querySelectorAll('#dBody > [data-tab="wert"]').forEach(e => { e.removeAttribute("data-tab"); e.classList.add("full"); if (mp) mp.appendChild(e); });
-  ["Ausgabe", "Merkmale", "Menge & Preis", "Kauf", "Wunschliste", "Notizen", "Titelliste", "Mehr zur Platte"].forEach(t => { const e = abschnitt(t); if (e) grid.appendChild(e); });
+  ["Ausgabe", "Merkmale", "Menge & Preis", "Kauf", "Gehört", "Wunschliste", "Notizen", "Titelliste", "Mehr zur Platte"].forEach(t => { const e = abschnitt(t); if (e) grid.appendChild(e); });
   const sw = $("#sterneWahl");
   for (let i = 1; i <= 5; i++) {
     const b = document.createElement("button"); b.type = "button"; b.textContent = "★"; b.setAttribute("aria-label", i + " Sterne");
@@ -1294,6 +1320,7 @@ function oeffne(uid) {
   $("#f_kaufdatum").value = d ? d.kaufdatum || "" : ""; $("#f_haendler").value = d ? d.haendler || "" : "";
   formMarken = d ? markenListe(d) : []; $("#markeNeu").value = ""; markenZeichnen();
   formTracks = d ? d.tracklist || "" : ""; tlZeigen();
+  formHoer = { n: d ? d.gehoert_n || "" : "", zeit: d ? d.gehoert_zeit || "" : "" }; hoerZeigen();
   wunschZeigen();
   const zsel = $("#f_zustand");
   [...zsel.options].forEach(o => { if (o.value && !ZUSTAND.includes(o.value)) o.remove(); });   // unbekannter Altwert (z. B. selbst getippt) bleibt als Option erhalten, damit er beim Speichern nicht verloren geht
@@ -1327,6 +1354,93 @@ function backupHinweisZeigen() {
   b.onclick = () => { try { localStorage.setItem(BACKUP_HINT, String(Date.now())); } catch (e) {} box.hidden = true; };
   box.append(t, a, b);
 }
+// ---------- Gehört-Zähler, Zufallsplatte, Dubletten ----------
+let formHoer = { n: "", zeit: "" };
+function vorZeit(ts) {
+  const t = Number(ts); if (!t) return "noch nie";
+  const tage = Math.floor((Date.now() - t) / 864e5);
+  if (tage <= 0) return "heute"; if (tage === 1) return "gestern";
+  if (tage < 14) return "vor " + tage + " Tagen"; if (tage < 60) return "vor " + Math.floor(tage / 7) + " Wochen";
+  if (tage < 700) return "vor " + Math.floor(tage / 30) + " Monaten"; return "vor " + Math.floor(tage / 365) + " Jahren";
+}
+const gleicherTag = ts => ts && new Date(Number(ts)).toDateString() === new Date().toDateString();
+function hoerText(n, zeit) { n = parseInt(n, 10) || 0; return n ? "🎧 " + n + "× gehört · zuletzt " + vorZeit(zeit) : "🎧 Noch nicht als gehört vermerkt"; }
+function hoerZeigen() { const t = $("#hoerText"); if (t) t.textContent = hoerText(formHoer.n, formHoer.zeit); }
+document.addEventListener("click", e => {
+  if (e.target.id === "hoerPlus") {
+    if (gleicherTag(formHoer.zeit)) { toast("Heute schon vermerkt."); return; }
+    formHoer = { n: String((parseInt(formHoer.n, 10) || 0) + 1), zeit: String(Date.now()) }; hoerZeigen();
+  } else if (e.target.id === "hoerNull") { formHoer = { n: "", zeit: "" }; hoerZeigen(); }
+});
+function zufallGehoertZeigen() {
+  const d = daten.find(x => x.uid === zufallUid), t = $("#zufallGehoert");
+  t.textContent = d ? hoerText(d.gehoert_n, d.gehoert_zeit) : ""; $("#zufallGehoertBtn").disabled = !d;
+}
+$("#zufallGehoertBtn").onclick = () => {
+  const d = daten.find(x => x.uid === zufallUid); if (!d) return;
+  if (gleicherTag(d.gehoert_zeit)) { toast("Heute schon vermerkt."); return; }
+  d.gehoert_n = String((parseInt(d.gehoert_n, 10) || 0) + 1); d.gehoert_zeit = String(Date.now()); d.geaendert = Date.now();
+  speichern(); render(); zufallGehoertZeigen(); toast("Vermerkt: heute gehört.");
+};
+try { $("#zufallAlt").checked = localStorage.getItem("plattenarchiv-zufall-alt") === "1"; } catch (e) {}
+$("#zufallAlt").onchange = e => { try { localStorage.setItem("plattenarchiv-zufall-alt", e.target.checked ? "1" : ""); } catch (x) {} };
+
+// Dubletten
+const DUP_IGNOR = "plattenarchiv-dup-ignore";
+const dupIgnor = () => { try { return new Set(JSON.parse(localStorage.getItem(DUP_IGNOR)) || []); } catch (e) { return new Set(); } };
+const dupKey = (a, b) => [a.uid, b.uid].sort().join("|");
+function dupPaare() {
+  const l = alleAktiv(), ign = dupIgnor(), out = [];
+  for (let i = 0; i < l.length; i++) for (let j = i + 1; j < l.length; j++) {
+    const a = l[i], b = l[j]; if ((a.wunsch === "1") !== (b.wunsch === "1")) continue;
+    const ba = ziffern(a.barcode), bb = ziffern(b.barcode), na = norm(a.band).trim(), nb = norm(b.band).trim();
+    const gleichBc = !!ba && ba === bb;
+    const gleichName = !!na && na === nb && norm(a.album).trim() === norm(b.album).trim() && !(ba && bb && ba !== bb);
+    if ((gleichBc || gleichName) && !ign.has(dupKey(a, b))) out.push({ a, b, grund: gleichBc ? "gleicher Barcode" : "gleiche Band- und Albumnamen" });
+  }
+  return out;
+}
+const dupPunkte = d => [...KEYS, ...EXTRA].filter(k => String(d[k] || "").trim()).length + fotoListe(d.uid).length;
+let dupListe = [], dupWahl = "a";
+function dupZeigen() {
+  const box = $("#dupKarten"); box.innerHTML = "";
+  if (!dupListe.length) { $("#dupInfo").textContent = "Keine (weiteren) Dubletten gefunden. ✓"; $("#dupMerge").hidden = $("#dupBeide").hidden = true; $("#dupSpaeter").textContent = "Fertig"; return; }
+  $("#dupMerge").hidden = $("#dupBeide").hidden = false; $("#dupSpaeter").textContent = "Später entscheiden";
+  const p = dupListe[0]; if (!p.gewaehlt) { p.gewaehlt = true; dupWahl = dupPunkte(p.b) > dupPunkte(p.a) ? "b" : "a"; }
+  $("#dupInfo").textContent = dupListe.length + (dupListe.length === 1 ? " mögliches Paar" : " mögliche Paare") + " (" + p.grund + "). Tippe auf den Eintrag, der bleiben soll.";
+  ["a", "b"].forEach(w => {
+    const d = p[w], k = document.createElement("button"); k.type = "button"; k.className = "dupkarte" + (dupWahl === w ? " on" : "");
+    const z = (t, c) => { const e = document.createElement(c || "span"); e.textContent = t; k.appendChild(e); return e; };
+    z(d.band, "b"); z(d.album);
+    const m1 = [d.jahr, d.format].filter(Boolean).join(" · "); if (m1) z(m1, "small");
+    const m2 = [d.zustand && zustandNeu(d.zustand), parseInt(d.bewertung, 10) ? "★ " + parseInt(d.bewertung, 10) : "", d.marktwert && "≈ " + d.marktwert + " €"].filter(Boolean).join(" · "); if (m2) z(m2, "small");
+    const m3 = [(parseInt(d.anzahl, 10) || 1) + "×", d.barcode && "Code " + d.barcode, fotoListe(d.uid).length ? "📷 " + fotoListe(d.uid).length : ""].filter(Boolean).join(" · "); z(m3, "small");
+    if (dupWahl === w) z("✓ bleibt", "span").className = "behalten";
+    k.onclick = () => { dupWahl = w; dupZeigen(); }; box.appendChild(k);
+  });
+  const a = p[dupWahl], o = p[dupWahl === "a" ? "b" : "a"];
+  $("#dupMerge").textContent = "Zusammenführen (" + ((parseInt(a.anzahl, 10) || 1) + (parseInt(o.anzahl, 10) || 1)) + "×)";
+}
+function dupZusammen(k, o) {
+  const snapK = { ...k }, snapO = { ...o }, fm = JSON.parse(JSON.stringify(fotoMeta()));
+  k.anzahl = String((parseInt(k.anzahl, 10) || 1) + (parseInt(o.anzahl, 10) || 1));
+  const eigen = ["anzahl", "marken", "gehoert_n", "gehoert_zeit"];
+  for (const key of [...KEYS, ...EXTRA]) if (!eigen.includes(key) && !String(k[key] || "").trim() && String(o[key] || "").trim()) k[key] = o[key];
+  k.marken = [...new Set([...markenListe(k), ...markenListe(o)])].join(", ");
+  k.gehoert_n = String((parseInt(k.gehoert_n, 10) || 0) + (parseInt(o.gehoert_n, 10) || 0)) === "0" ? "" : String((parseInt(k.gehoert_n, 10) || 0) + (parseInt(o.gehoert_n, 10) || 0));
+  k.gehoert_zeit = String(Math.max(Number(k.gehoert_zeit) || 0, Number(o.gehoert_zeit) || 0) || "");
+  const m = fotoMeta(); if (m[o.uid]) { m[k.uid] = [...(m[k.uid] || []), ...m[o.uid]]; delete m[o.uid]; fotoMetaSpeichern(m); }
+  k.geaendert = Date.now(); o.geloescht = true; o.geaendert = Date.now();
+  speichern(); render();
+  toastRueckgaengig("„" + k.band + " – " + k.album + "“ zusammengeführt", () => {
+    Object.assign(k, snapK, { geaendert: Date.now() }); Object.assign(o, snapO, { geaendert: Date.now() }); fotoMetaSpeichern(fm); speichern(); render(); toast("Zusammenführen rückgängig gemacht.");
+  });
+}
+$("#dupStart").onclick = () => { dupListe = dupPaare(); dupZeigen(); if (!$("#dupDlg").open) $("#dupDlg").showModal(); };
+$("#dupMerge").onclick = () => { const p = dupListe[0]; if (!p) return; dupZusammen(p[dupWahl], p[dupWahl === "a" ? "b" : "a"]); dupListe = dupPaare(); dupZeigen(); };
+$("#dupBeide").onclick = () => { const p = dupListe[0]; if (!p) return; const ign = dupIgnor(); ign.add(dupKey(p.a, p.b));
+  try { localStorage.setItem(DUP_IGNOR, JSON.stringify([...ign])); } catch (e) {} dupListe = dupPaare(); dupZeigen(); };
+$("#dupSpaeter").onclick = $("#dupX").onclick = () => $("#dupDlg").close();
 // ---------- Doppelte erkennen ----------
 // Barcodes vergleichen ohne führende Nullen (UPC-12 und EAN-13 desselben Codes sind gleich).
 const ziffern = x => String(x || "").replace(/\D/g, "").replace(/^0+/, "");
@@ -1375,7 +1489,7 @@ $("#form").addEventListener("submit", async e => {
   werte.kaufdatum = /^\d{4}-\d{2}-\d{2}$/.test($("#f_kaufdatum").value) ? $("#f_kaufdatum").value : ""; werte.haendler = $("#f_haendler").value.trim();
   if ($("#markeNeu").value.trim()) markeHinzu($("#markeNeu").value);
   werte.marken = formMarken.join(", ");
-  werte.tracklist = formTracks;
+  werte.tracklist = formTracks; werte.gehoert_n = formHoer.n; werte.gehoert_zeit = formHoer.zeit;
   werte.cover_foto = formCover.foto; werte.cover_mbid = formCover.mbid; werte.discogs_id = formCover.discogs;
   const fehlt = FELDER.filter(([k]) => PFLICHT.includes(k) && !werte[k]).map(f => f[1]);
   if (fehlt.length) { dlgReiter("basis"); toast("Bitte ausfüllen: " + fehlt.join(", ")); return; }
@@ -1427,7 +1541,12 @@ function zufallZiehen() {
   if (!pool.length) { $("#zufallHinweis").textContent = "Keine Platte in der aktuellen Auswahl."; $("#zufallNochmal").disabled = $("#zufallOeffnen").disabled = true; zufallUid = null; return; }
   $("#zufallNochmal").disabled = pool.length < 2; $("#zufallOeffnen").disabled = false;
   const kandidaten = pool.length > 1 ? pool.filter(d => d.uid !== zufallUid) : pool;   // nicht zweimal dieselbe hintereinander
-  const d = kandidaten[Math.floor(Math.random() * kandidaten.length)]; zufallUid = d.uid;
+  let d;
+  if ($("#zufallAlt").checked) {   // je länger nicht gehört (oder nie), desto wahrscheinlicher
+    const gew = kandidaten.map(x => 1 + (x.gehoert_zeit ? Math.min(730, (Date.now() - Number(x.gehoert_zeit)) / 864e5) : 730));
+    let r = Math.random() * gew.reduce((a, b) => a + b, 0), i = 0; while (i < gew.length - 1 && (r -= gew[i]) > 0) i++; d = kandidaten[i];
+  } else d = kandidaten[Math.floor(Math.random() * kandidaten.length)];
+  zufallUid = d.uid;
   const el = (t, c, x) => { const e = document.createElement(t); if (c) e.className = c; if (x != null) e.textContent = x; return e; };
   box.append(coverElement(d), el("b", "", d.band), el("span", "alb", d.album));
   const info = [d.genre, d.jahr || d.orig_jahr, d.format].filter(Boolean).join(" · "); if (info) box.append(el("span", "meta", info));
@@ -1438,7 +1557,7 @@ function zufallZiehen() {
   markenListe(d).forEach(x => chips.append(el("span", "mchip", x)));
   if (chips.children.length) box.append(chips);
   box.classList.remove("neu"); void box.offsetWidth; box.classList.add("neu");
-  $("#zufallHinweis").textContent = pool.length + (pool.length === 1 ? " Platte" : " Platten") + " in der Auswahl";
+  $("#zufallHinweis").textContent = pool.length + (pool.length === 1 ? " Platte" : " Platten") + " in der Auswahl"; zufallGehoertZeigen();
 }
 $("#zufallBtn").onclick = () => { zufallUid = null; zufallZiehen(); $("#zufallDlg").showModal(); };
 $("#zufallNochmal").onclick = zufallZiehen;
@@ -1476,6 +1595,13 @@ function renderStatistik() {
   if (teuer.length) { const k = karte("Wertvollste Platten"); teuer.forEach(d => k.append(zeile(d, geld(zahlKurz(d.marktwert))))); }
   const top = nB ? S.filter(d => parseInt(d.bewertung, 10) >= 1).sort((a, b) => (parseInt(b.bewertung, 10) - parseInt(a.bewertung, 10)) || String(a.band).localeCompare(String(b.band), "de")).slice(0, 5) : [];
   if (top.length) { const k = karte("Am besten bewertet"); top.forEach(d => k.append(zeile(d, sterneText(parseInt(d.bewertung, 10))))); }
+  { const gh = S.filter(d => parseInt(d.gehoert_n, 10) >= 1);
+    if (gh.length) {
+      const k1 = karte("Am häufigsten gehört");
+      [...gh].sort((a, b) => (parseInt(b.gehoert_n, 10) - parseInt(a.gehoert_n, 10)) || (Number(b.gehoert_zeit) - Number(a.gehoert_zeit))).slice(0, 5).forEach(d => k1.append(zeile(d, parseInt(d.gehoert_n, 10) + "×")));
+      const k2 = karte("Lange nicht aufgelegt");
+      [...gh].sort((a, b) => (Number(a.gehoert_zeit) || 0) - (Number(b.gehoert_zeit) || 0)).slice(0, 5).forEach(d => k2.append(zeile(d, vorZeit(d.gehoert_zeit))));
+    } }
   const balken = (titel, map, max) => {
     const e = [...map.entries()].sort((a, b) => b[1] - a[1] || String(a[0]).localeCompare(String(b[0]), "de")).slice(0, max);
     if (!e.length) return; const k = karte(titel), hoechst = e[0][1];
