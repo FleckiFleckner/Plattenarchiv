@@ -318,6 +318,8 @@
   #kamChips span.ja { color: var(--akz-hell); border-color: rgba(79,184,174,.5); }
   .nummernzeile { margin: 6px 0 4px; } .nummernzeile input { flex: 1 1 auto; min-width: 0; } .nummernzeile button { padding: 10px 18px; }
   .scanlinks { display: flex; justify-content: center; gap: 22px; margin-top: 8px; }
+  #ocrDlg label { margin-bottom: 2px; } #ocrDlg #ocrChips { margin-top: 4px; }
+  .ocrzeile { margin: 0 0 6px; }
   .linkbtn { background: transparent; border: 0; color: var(--akz-hell); padding: 8px 4px; font-size: .92rem; }
 </style>
 </head>
@@ -459,7 +461,7 @@
   <div class="eseite" data-seite="ueber" hidden>
     <div class="ekarte">
       <b id="ueberZahlen"></b>
-      <span class="hinweis" id="ueberVersion" style="display:block;margin:2px 0 0">Version 43 (Kaufdaten)</span>
+      <span class="hinweis" id="ueberVersion" style="display:block;margin:2px 0 0">Version 44 (Cover-Foto lesen)</span>
       <p class="hinweis">Die Daten liegen in diesem Browser und – wenn Google Drive verbunden ist – zusätzlich in deinem Drive. Mit „Sync-Datei exportieren“ kannst du jederzeit eine Sicherung ziehen.</p>
     </div>
   </div>
@@ -483,6 +485,7 @@
         <button type="button" id="btnScan">📷 Barcode scannen</button>
         <button type="button" id="btnOnline">🔎 Online suchen</button>
       </div>
+      <div class="scanlinks ocrzeile" data-tab="basis"><button type="button" id="btnOcr" class="linkbtn">🖼 Kein Barcode? Cover fotografieren &amp; Text lesen</button></div>
       <details class="info" data-tab="basis"><summary>ⓘ Woher kommen die Daten?</summary>
         <p class="hinweis">Aus MusicBrainz bzw. Discogs – bitte kurz prüfen. „Online suchen“ nutzt Band und/oder Album. * = Pflichtfeld.</p></details>
       <div class="grid" id="formGrid"></div>
@@ -507,6 +510,22 @@
       <button type="submit" class="primary">Speichern</button>
     </div>
   </form>
+</dialog>
+<dialog id="ocrDlg">
+  <div class="dkopf"><h2>Text vom Foto</h2><button type="button" id="ocrX" aria-label="Schließen">✕</button></div>
+  <p class="hinweis" id="ocrStatus"></p>
+  <div id="ocrBody" hidden>
+    <label for="ocrBand">Band / Künstler</label><input id="ocrBand" autocomplete="off">
+    <label for="ocrAlbum" style="margin-top:8px">Album</label><input id="ocrAlbum" autocomplete="off">
+    <p class="hinweis" style="margin-top:10px">Erkannte Zeilen – antippen, um sie in das zuletzt gewählte Feld zu setzen:</p>
+    <div class="chips" id="ocrChips"></div>
+    <p class="hinweis">Die Texterkennung irrt sich bei verschnörkelten Schriften öfter – bitte kurz prüfen und korrigieren.</p>
+    <div class="aktionen untenleiste" style="position:static;margin:10px 0 0;padding:0">
+      <button type="button" id="ocrNeu">Neues Foto</button><span class="spacer"></span>
+      <button type="button" id="ocrSuchen" class="primary">Online suchen</button>
+    </div>
+  </div>
+  <input id="ocrWahl" type="file" accept="image/*" hidden>
 </dialog>
 <datalist id="genreListe"></datalist>
 <datalist id="haendlerListe"></datalist>
@@ -538,6 +557,7 @@
     <button type="button" id="fotoBtn" class="linkbtn">📷 Foto aufnehmen</button>
     <button type="button" id="scanManuell" class="linkbtn">✎ Von Hand eintragen</button>
   </div>
+  <div class="scanlinks" style="margin-top:0"><button type="button" id="scanOhneCode" class="linkbtn">🖼 Ohne Barcode: Cover fotografieren</button></div>
   <input id="fotoWahl" type="file" accept="image/*" capture="environment" hidden>
 </dialog>
 <dialog id="frageDlg">
@@ -1630,12 +1650,77 @@ async function sucheText() {
     const q = teile.join(" AND ");
     let liste = await sucheOnline(q + " AND format:vinyl");
     if (!liste.length) liste = await sucheOnline(q);
+    let nurBand = false;
+    if (!liste.length && band && album) { liste = await sucheOnline("artist:(" + lucene(band) + ") AND format:vinyl"); nurBand = liste.length > 0; }   // Album evtl. falsch gelesen/geschrieben → Platten der Band zeigen
     meldung("");
     if (!liste.length) { toast("Nichts gefunden – Schreibweise prüfen oder von Hand eintragen."); return; }
+    if (nurBand) toast("Album nicht gefunden – hier die Platten der Band.");
     const wahl = await waehleTreffer(liste);
     if (wahl) await uebernehmen(wahl);
   } catch (e) { meldung(""); toast("Suche fehlgeschlagen: " + e.message); }
 }
+
+// Text vom Cover-Foto lesen (Texterkennung im Browser, Tesseract.js) – Alternative, wenn die Platte keinen Barcode hat
+let ocrFeld = null;
+function ladeTesseract() {
+  return new Promise((res, rej) => {
+    if (window.Tesseract) return res();
+    const sc = document.createElement("script");
+    sc.src = "https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js";
+    sc.onload = () => window.Tesseract ? res() : rej(new Error("Texterkennung nicht verfügbar"));
+    sc.onerror = () => rej(new Error("Texterkennung konnte nicht geladen werden (Internetverbindung?)"));
+    document.head.appendChild(sc);
+  });
+}
+async function ocrBild(datei) {
+  const bmp = await createImageBitmap(datei);
+  const f = Math.min(1, 1600 / Math.max(bmp.width, bmp.height));
+  const c = document.createElement("canvas"); c.width = Math.round(bmp.width * f); c.height = Math.round(bmp.height * f);
+  c.getContext("2d").drawImage(bmp, 0, 0, c.width, c.height);
+  return new Promise(res => c.toBlob(res, "image/jpeg", 0.9));
+}
+function ocrZeilen(daten_) {   // brauchbare Zeilen, größte Schrift zuerst
+  const roh = (daten_.lines || []).map(l => ({ t: String(l.text || "").replace(/[|_~=<>\\\[\]{}*#]/g, " ").replace(/\s+/g, " ").trim(),
+    h: l.bbox ? l.bbox.y1 - l.bbox.y0 : 0, conf: l.confidence || 0 }));
+  const gut = roh.filter(z => z.t.length >= 3 && z.t.length <= 60 && z.conf >= 40 && (z.t.match(/[A-Za-zÄÖÜäöüß0-9]/g) || []).length / z.t.length >= 0.6);
+  const gesehen = new Set(), aus = [];
+  for (const z of gut.sort((a, b) => b.h - a.h)) { const k = norm(z.t); if (!gesehen.has(k)) { gesehen.add(k); aus.push(z.t); } }
+  return aus.slice(0, 8);
+}
+const ocrSchoen = t => (t === t.toUpperCase() && /[A-Z]/.test(t)) ? t.toLowerCase().replace(/(^|[\s\-/(])(\p{L})/gu, (m, a, b) => a + b.toUpperCase()) : t;
+async function ocrStart(datei) {
+  const dlg = $("#ocrDlg"); if (!dlg.open) dlg.showModal();
+  $("#ocrBody").hidden = true; $("#ocrStatus").textContent = "Foto wird vorbereitet …";
+  try {
+    const blob = await ocrBild(datei);
+    $("#ocrStatus").textContent = "Texterkennung wird geladen (beim ersten Mal einige MB, dauert kurz) …";
+    await ladeTesseract();
+    const w = await Tesseract.createWorker(["eng", "deu"], 1, { logger: m => {
+      if (m.status === "recognizing text") $("#ocrStatus").textContent = "Text wird gelesen … " + Math.round((m.progress || 0) * 100) + " %";
+      else if (m.status) $("#ocrStatus").textContent = "Texterkennung wird vorbereitet …";
+    } });
+    let r; try { r = await w.recognize(blob); } finally { try { await w.terminate(); } catch (e) {} }
+    const z = ocrZeilen(r.data || {});
+    if (!z.length) { $("#ocrStatus").textContent = "Es wurde kein brauchbarer Text erkannt. Bitte ein schärferes, gut beleuchtetes Foto machen – am besten von Rücken oder Etikett – oder Band und Album von Hand eintragen."; $("#ocrBody").hidden = false; $("#ocrChips").replaceChildren(); return; }
+    $("#ocrBand").value = ocrSchoen(z[0]); $("#ocrAlbum").value = z[1] ? ocrSchoen(z[1]) : "";
+    const ch = $("#ocrChips"); ch.replaceChildren();
+    z.forEach(t => { const b = document.createElement("button"); b.type = "button"; b.textContent = ocrSchoen(t); b.onclick = () => { (ocrFeld || $("#ocrBand")).value = ocrSchoen(t); }; ch.appendChild(b); });
+    $("#ocrStatus").textContent = "Das habe ich gelesen – bitte prüfen:"; $("#ocrBody").hidden = false;
+  } catch (e) { $("#ocrStatus").textContent = "Das hat nicht geklappt: " + e.message; $("#ocrBody").hidden = false; $("#ocrChips").replaceChildren(); }
+}
+function ocrOeffnen() { if (!$("#dlg").open) oeffne(null); $("#ocrWahl").value = ""; $("#ocrWahl").click(); }
+$("#btnOcr").onclick = ocrOeffnen;
+$("#scanOhneCode").onclick = () => { scanSchliessen(); ocrOeffnen(); };
+$("#ocrWahl").onchange = e => { const f = e.target.files && e.target.files[0]; if (f) ocrStart(f); };
+$("#ocrNeu").onclick = () => { $("#ocrWahl").value = ""; $("#ocrWahl").click(); };
+$("#ocrX").onclick = () => $("#ocrDlg").close();
+$("#ocrBand").onfocus = () => { ocrFeld = $("#ocrBand"); }; $("#ocrAlbum").onfocus = () => { ocrFeld = $("#ocrAlbum"); };
+$("#ocrSuchen").onclick = () => {
+  const band = $("#ocrBand").value.trim(), album = $("#ocrAlbum").value.trim();
+  if (!band && !album) { toast("Bitte Band und/oder Album eintragen."); return; }
+  $("#f_band").value = band; $("#f_album").value = album; fundZeigen();
+  $("#ocrDlg").close(); sucheText();
+};
 
 // Kamera
 function ladeZXing() {
