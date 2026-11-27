@@ -184,6 +184,17 @@
   .gchip { display: inline-block; padding: 0 8px; border-radius: 6px; background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.25); color: #e4e0db; font-size: .72rem; font-weight: 600; line-height: 1.5; white-space: nowrap; }
   .fc { cursor: pointer; position: relative; } .fc::after { content: ""; position: absolute; inset: -4px 0; }   /* nur nach oben/unten größer, damit Nachbar-Chips sich nicht überlappen */
   .fc.akt { box-shadow: 0 0 0 1px var(--accent), 0 0 9px rgba(182,85,216,.7); }   /* größere Tippfläche, ohne dass das Chip größer aussieht */ .fc:active { filter: brightness(1.4); }
+  .tl { list-style: none; margin: 4px 0 0; padding: 0; }
+  .tl li { display: flex; gap: 10px; padding: 7px 0; border-bottom: 1px solid rgba(255,255,255,.09); font-size: .9rem; }
+  .tl li:last-child { border-bottom: 0; }
+  .tl .n { color: var(--akz-hell); width: 28px; flex: none; font-weight: 700; } .tl .t { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; } .tl .d { color: var(--muted); flex: none; }
+  .tl li.tlseite { display: block; border: 0; padding: 8px 0 0; color: var(--akz-hell); font-size: .72rem; letter-spacing: .14em; font-weight: 700; }
+  .tlinfo { color: var(--muted); font-size: .8rem; margin: 8px 0 0; } .tlinfo .linkbtn { padding: 0 2px; font-size: .8rem; }
+  .tlinks { display: grid; gap: 8px; }
+  .tlinks a { display: flex; align-items: center; justify-content: space-between; padding: 11px 14px; border-radius: 12px; background: var(--seg-bg); border: 1px solid rgba(255,255,255,.14); color: var(--text); text-decoration: none; font-size: .95rem; }
+  .tlinks a span { color: var(--akz-hell); }
+  .tlu { display: flex; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,.09); font-size: .88rem; }
+  .tlu .tx { flex: 1 1 auto; min-width: 0; } .tlu .tx small { display: block; color: var(--muted); } .tlu button { flex: none; padding: 6px 12px; }
   .fehlt { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 50%; background: rgba(240,170,60,.18); border: 1px solid rgba(240,170,60,.75); color: #f0aa3c; font-size: .72rem; font-weight: 800; line-height: 1; cursor: help; }
   #liste.raster .fehlt.punkt { position: absolute; top: 4px; left: 4px; width: 12px; height: 12px; font-size: 0; background: #f0aa3c; border-color: #1b1731; }
   #liste.raster .karte div.cover b { font-size: .82rem; line-height: 1.15; overflow-wrap: break-word; word-break: normal; } #liste.raster .karte div.cover span { font-size: .72rem; }
@@ -529,6 +540,17 @@
       <button type="button" id="mwStop" hidden>Abbrechen</button>
       <p class="hinweis" id="mwStatus">„Fehlende nachtragen“ füllt nur leere Marktwert-Felder. „Alle aktualisieren“ holt auch für Platten mit vorhandenem Wert den aktuellen Preis (Sammlung und Wunschliste); der bisherige Wert wird als Vergleich gemerkt. Alle anderen Daten bleiben unverändert.</p>
     </div>
+    <div class="ekarte">
+      <b id="tlAbdeckung"></b>
+      <div class="ebalken"><i id="tlBalken"></i></div>
+      <div class="ebtns">
+        <button type="button" id="tlAlle">Fehlende nachtragen</button>
+        <button type="button" id="tlAlleNeu">Alle neu laden</button>
+      </div>
+      <button type="button" id="tlStop" hidden>Abbrechen</button>
+      <p class="hinweis" id="tlStatus">Holt die Titelliste jeder Platte von Discogs bzw. MusicBrainz. Nur eindeutige Treffer (gleiche Band und gleiches Album) werden automatisch übernommen, bei den übrigen frage ich nach. Andere Daten bleiben unverändert.</p>
+      <div id="tlUnsicher"></div>
+    </div>
   </div>
 
   <div class="eseite" data-seite="sicherung" hidden>
@@ -558,7 +580,7 @@
   <div class="eseite" data-seite="ueber" hidden>
     <div class="ekarte">
       <b id="ueberZahlen"></b>
-      <span class="hinweis" id="ueberVersion" style="display:block;margin:2px 0 0">Version 58 (Einladungscode)</span>
+      <span class="hinweis" id="ueberVersion" style="display:block;margin:2px 0 0">Version 59 (Titellisten & Links)</span>
       <p class="hinweis">Die Daten liegen in diesem Browser und – wenn Google Drive verbunden ist – zusätzlich in deinem Drive. Mit „Sync-Datei exportieren“ kannst du jederzeit eine Sicherung ziehen.</p>
     </div>
   </div>
@@ -685,7 +707,7 @@ const FELDER = [
   ["land", "Land"], ["anzahl", "Anzahl"], ["preis", "EK-Preis (€)"], ["marktwert", "Marktwert (€, ca.)"], ["notizen", "Notizen"]
 ];   // „preis“ bleibt intern der Schlüssel für den EK-Preis, damit alte Einträge und Sync-Dateien passen
 const KEYS = FELDER.map(f => f[0]);
-const EXTRA = ["cover_mbid", "cover_foto", "discogs_id", "bewertung", "wunsch", "zielpreis", "mw_alt", "mw_datum", "angelegt", "kaufdatum", "haendler", "marken"];   // werden nur mitgeführt und synchronisiert
+const EXTRA = ["cover_mbid", "cover_foto", "discogs_id", "bewertung", "wunsch", "zielpreis", "mw_alt", "mw_datum", "angelegt", "kaufdatum", "haendler", "marken", "tracklist"];   // werden nur mitgeführt und synchronisiert
 const PFLICHT = ["band", "album", "genre"];
 const FORMATE = ["LP", "Doppel-LP", "EP", "Single 7\"", "Maxi 12\"", "Box-Set", "Sonstiges"];
 // Einfache Zustandsstufen. Alte Einträge mit Goldmine-Kürzeln (M, NM, VG+ …) bleiben unverändert gespeichert und werden nur umgedeutet angezeigt.
@@ -971,6 +993,12 @@ function baueFormular() {
   const notizSec = [...grid.children].find(e => e.firstChild && e.firstChild.textContent === "Notizen"); if (notizSec) grid.insertBefore(mk, notizSec);
   $("#markeAdd").onclick = () => markeHinzu($("#markeNeu").value);
   $("#markeNeu").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); markeHinzu($("#markeNeu").value); } });
+  const ml = neuerAbschnitt("details", "Mehr zur Platte");
+  ml.insertAdjacentHTML("beforeend", '<div class="full tlinks"><a id="tlLinkDiscogs" target="_blank" rel="noopener">Bei Discogs öffnen <span>↗</span></a>'
+    + '<a id="tlLinkJpc" target="_blank" rel="noopener">Bei jpc suchen <span>↗</span></a><a id="tlLinkYt" target="_blank" rel="noopener">Bei YouTube suchen <span>↗</span></a></div>');
+  const tls = neuerAbschnitt("details", "Titelliste");
+  tls.insertAdjacentHTML("beforeend", '<div class="full"><div id="tlBox"></div><div class="tlinfo" id="tlInfo"></div></div>');
+  ["tlLinkDiscogs", "tlLinkJpc", "tlLinkYt"].forEach(id => { $("#" + id).addEventListener("click", tlLinksSetzen); });
   const zd = $("#f_zustand").parentElement.parentElement;   // Bewertung im Abschnitt „Pressung & Zustand“, damit nichts wegscrollt
   zd.insertAdjacentHTML("beforeend", '<div class="full bewZeile"><label>Meine Bewertung</label><div class="sterneWahl" id="sterneWahl" role="group" aria-label="Bewertung"></div></div>');
   const kf = neuerAbschnitt("wert", "Kauf");
@@ -1048,6 +1076,7 @@ function oeffne(uid) {
   $("#f_zielpreis").value = d ? d.zielpreis || "" : "";
   $("#f_kaufdatum").value = d ? d.kaufdatum || "" : ""; $("#f_haendler").value = d ? d.haendler || "" : "";
   formMarken = d ? markenListe(d) : []; $("#markeNeu").value = ""; markenZeichnen();
+  formTracks = d ? d.tracklist || "" : ""; tlZeigen();
   wunschZeigen();
   const zsel = $("#f_zustand");
   [...zsel.options].forEach(o => { if (o.value && !ZUSTAND.includes(o.value)) o.remove(); });   // unbekannter Altwert (z. B. selbst getippt) bleibt als Option erhalten, damit er beim Speichern nicht verloren geht
@@ -1108,6 +1137,7 @@ $("#form").addEventListener("submit", async e => {
   werte.kaufdatum = /^\d{4}-\d{2}-\d{2}$/.test($("#f_kaufdatum").value) ? $("#f_kaufdatum").value : ""; werte.haendler = $("#f_haendler").value.trim();
   if ($("#markeNeu").value.trim()) markeHinzu($("#markeNeu").value);
   werte.marken = formMarken.join(", ");
+  werte.tracklist = formTracks;
   werte.cover_foto = formCover.foto; werte.cover_mbid = formCover.mbid; werte.discogs_id = formCover.discogs;
   const fehlt = FELDER.filter(([k]) => PFLICHT.includes(k) && !werte[k]).map(f => f[1]);
   if (fehlt.length) { dlgReiter("basis"); toast("Bitte ausfüllen: " + fehlt.join(", ")); return; }
@@ -1116,6 +1146,7 @@ $("#form").addEventListener("submit", async e => {
   }
   if (werte.anzahl && !/^[1-9]\d*$/.test(werte.anzahl)) { dlgReiter("wert"); toast("Anzahl: bitte eine ganze Zahl ab 1 angeben."); return; }
   if (!werte.anzahl) werte.anzahl = "1";
+  let neuUid = null;
   if (!aktuelleUid) {
     const v = findeVorhanden(werte);
     if (v) {
@@ -1132,9 +1163,11 @@ $("#form").addEventListener("submit", async e => {
       }
       if (wahl !== 1) return;
     }
-    daten.push({ uid: neueUid(), geaendert: Date.now(), geloescht: false, ...werte, angelegt: String(Date.now()) });
+    neuUid = neueUid();
+    daten.push({ uid: neuUid, geaendert: Date.now(), geloescht: false, ...werte, angelegt: String(Date.now()) });
   } else Object.assign(daten.find(x => x.uid === aktuelleUid), werte, { geaendert: Date.now() });
   speichern(); render(); $("#dlg").close();
+  if (neuUid && !werte.tracklist) tlHintergrund(neuUid);   // Titelliste bei neuen Platten still im Hintergrund nachtragen
 });
 $("#abbrechen").onclick = () => $("#dlg").close();
 $("#loeschen").onclick = async () => {
@@ -1565,6 +1598,9 @@ function einstZusammenfassung() {
   $("#ueberZahlen").textContent = sammlung().length + " Einträge · " + stueck + " Platten · " + alle.filter(d => d.wunsch === "1").length + " auf der Wunschliste";
   $("#mwAbdeckung").textContent = mit + " von " + alle.length + " Platten haben einen Marktwert";
   $("#mwBalken").style.width = (alle.length ? Math.round(mit / alle.length * 100) : 0) + "%";
+  const tlMit = alle.filter(d => d.tracklist).length;
+  $("#tlAbdeckung").textContent = tlMit + " von " + alle.length + " Platten haben eine Titelliste";
+  $("#tlBalken").style.width = (alle.length ? Math.round(tlMit / alle.length * 100) : 0) + "%";
   let bg = ""; try { bg = localStorage.getItem(BG_KEY) || ""; } catch (e) {}
   $("#bgVorschau").style.backgroundImage = bg ? 'url("' + bg + '")' : getComputedStyle($("#bg")).backgroundImage;
   $("#driveAnmelden").textContent = driveAn ? "↻ Jetzt abgleichen" : "Mit Google anmelden";
@@ -2294,6 +2330,155 @@ $("#einstDlg").addEventListener("click", e => {   // Tipp neben das Fenster schl
   const r = e.currentTarget.getBoundingClientRect();
   if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) e.currentTarget.close();
 });
+// ---------- Titellisten & Links ----------
+// Gespeichert als Text: erste Zeile "#Quelle", danach je Titel "Position|Titel|Dauer" (wird wie alle Felder per Drive-Sync abgeglichen).
+let formTracks = "";
+const tlNorm = t => String(t || "").toLocaleLowerCase("de").replace(/&/g, "and").replace(/^the\s+/, "").replace(/[^a-z0-9äöüß]+/g, "");
+function tlKodieren(quelle, liste) {
+  const z = t => String(t || "").replace(/[|\r\n]+/g, " ").trim();
+  return "#" + quelle + "\n" + liste.map(t => [t.pos, t.titel, t.dauer].map(z).join("|")).join("\n");
+}
+function tlLesen(text) {
+  const zeilen = String(text || "").split("\n").filter(Boolean); let quelle = "";
+  if (zeilen[0] && zeilen[0][0] === "#") quelle = zeilen.shift().slice(1);
+  return { quelle, liste: zeilen.map(z => { const [pos, titel, dauer] = z.split("|"); return { pos: pos || "", titel: titel || "", dauer: dauer || "" }; }) };
+}
+const msZeit = ms => { if (!ms) return ""; const sek = Math.round(ms / 1000); return Math.floor(sek / 60) + ":" + String(sek % 60).padStart(2, "0"); };
+async function tlAusDiscogs(id) {
+  const t = discogsToken();
+  const r = await fetch("https://api.discogs.com/releases/" + encodeURIComponent(id) + (t ? "?token=" + encodeURIComponent(t) : ""));
+  if (!r.ok) throw new Error("Discogs: Fehler " + r.status);
+  const d = await r.json();
+  const liste = (d.tracklist || []).filter(x => !x.type_ || x.type_ === "track").map(x => ({ pos: x.position || "", titel: x.title || "", dauer: x.duration || "" })).filter(x => x.titel);
+  return { quelle: "Discogs", liste };
+}
+async function tlAusMB(mbid) {
+  const d = await mb("release/" + encodeURIComponent(mbid) + "?inc=recordings"), liste = [], mehrere = (d.media || []).length > 1;
+  (d.media || []).forEach((m, mi) => (m.tracks || []).forEach(t => {
+    let pos = String(t.number || t.position || ""); if (mehrere && /^\d+$/.test(pos)) pos = (mi + 1) + "-" + pos;
+    liste.push({ pos, titel: t.title || "", dauer: msZeit(t.length) });
+  }));
+  return { quelle: "MusicBrainz", liste };
+}
+async function tlSuche(d) {   // Ausgabe bei MusicBrainz suchen; „sicher“ nur bei gleicher Band und gleichem Album
+  const teile = []; if (d.album) teile.push("release:(" + lucene(d.album) + ")"); if (d.band) teile.push("artist:(" + lucene(d.band) + ")");
+  if (!teile.length) return { treffer: null, sicher: false };
+  const l = await sucheOnline(teile.join(" AND "));
+  const gleich = l.filter(r => tlNorm(r.band) === tlNorm(d.band) && tlNorm(r.album) === tlNorm(d.album));
+  const gut = gleich.find(r => /vinyl|12|7/i.test(r.formatRoh || "")) || gleich[0];
+  return gut ? { treffer: gut, sicher: true } : { treffer: l[0] || null, sicher: false };
+}
+async function tlHolen(d) {   // { liste, quelle } | { unsicher: Treffer } | { nichts: true }
+  if (d.discogsId) { try { const t = await tlAusDiscogs(d.discogsId); if (t.liste.length) return t; } catch (e) {} }
+  const s = await tlSuche(d);
+  if (!s.treffer) return { nichts: true };
+  if (!s.sicher) return { unsicher: s.treffer };
+  const t = await tlAusMB(s.treffer.mbid);
+  return t.liste.length ? t : { nichts: true };
+}
+function tlZeigen() {
+  const box = $("#tlBox"), info = $("#tlInfo"); if (!box) return;
+  box.innerHTML = ""; info.innerHTML = "";
+  const { quelle, liste } = tlLesen(formTracks);
+  const knopf = (text, fn) => { const b = document.createElement("button"); b.type = "button"; b.className = "linkbtn"; b.textContent = text; b.onclick = fn; return b; };
+  if (!liste.length) {
+    const b = document.createElement("button"); b.type = "button"; b.id = "tlLaden"; b.textContent = "↻ Titelliste laden"; b.onclick = tlFormLaden;
+    const p = document.createElement("p"); p.className = "hinweis"; p.textContent = "Noch keine Titelliste. Ich suche sie bei Discogs bzw. MusicBrainz.";
+    box.append(b, p); tlLinksSetzen(); return;
+  }
+  const ul = document.createElement("ul"); ul.className = "tl"; let seite = null;
+  liste.forEach(t => {
+    const m = /^([A-Za-z])\d*$/.exec(t.pos), sNeu = m ? m[1].toUpperCase() : null;
+    if (sNeu && sNeu !== seite) { seite = sNeu; const h = document.createElement("li"); h.className = "tlseite"; h.textContent = "SEITE " + seite; ul.appendChild(h); }
+    const li = document.createElement("li");
+    const n = document.createElement("span"); n.className = "n"; n.textContent = t.pos;
+    const ti = document.createElement("span"); ti.className = "t"; ti.textContent = t.titel;
+    const d = document.createElement("span"); d.className = "d"; d.textContent = t.dauer;
+    li.append(n, ti, d); ul.appendChild(li);
+  });
+  box.appendChild(ul);
+  info.append("Quelle: " + (quelle || "?") + " · " + liste.length + " Titel · ", knopf("Neu laden", tlFormLaden));
+  tlLinksSetzen();
+}
+async function tlFormLaden() {
+  const band = $("#f_band").value.trim(), album = $("#f_album").value.trim();
+  if (!band && !album) { toast("Bitte erst Band und Album eintragen."); return; }
+  $("#tlInfo").textContent = "Suche Titelliste …"; const b = $("#tlLaden"); if (b) b.disabled = true;
+  try {
+    let r = await tlHolen({ band, album, discogsId: formCover.discogs });
+    if (r.unsicher) {
+      const x = r.unsicher;
+      const wahl = await frage("Kein eindeutiger Treffer. Meinst du diese Ausgabe?\n" + x.band + " – " + x.album + "\n" + [x.jahr, x.label, x.formatRoh].filter(Boolean).join(" · "), ["Ja, übernehmen", "Abbrechen"]);
+      r = wahl === 0 ? await tlAusMB(x.mbid) : { nichts: true, abgebrochen: true };
+      if (r.liste && !r.liste.length) r = { nichts: true };
+    }
+    if (r.liste && r.liste.length) { formTracks = tlKodieren(r.quelle, r.liste); toast(r.liste.length + " Titel geladen – mit „Speichern“ übernehmen."); }
+    else if (!r.abgebrochen) toast("Keine Titelliste gefunden.");
+  } catch (e) { toast("Titelliste konnte nicht geladen werden: " + e.message); }
+  tlZeigen();
+}
+function tlLinksSetzen() {   // Such-Links aus den aktuellen Formularwerten
+  const a = $("#tlLinkDiscogs"); if (!a) return;
+  const q = encodeURIComponent([$("#f_band").value.trim(), $("#f_album").value.trim()].filter(Boolean).join(" "));
+  a.href = formCover.discogs ? "https://www.discogs.com/release/" + encodeURIComponent(formCover.discogs) : "https://www.discogs.com/search/?type=release&q=" + q;
+  $("#tlLinkJpc").href = "https://www.jpc.de/s/" + q;
+  $("#tlLinkYt").href = "https://www.youtube.com/results?search_query=" + q;
+}
+async function tlHintergrund(uid) {   // neue Platte: Titelliste still nachtragen, nur bei eindeutigem Treffer
+  try {
+    const d = daten.find(x => x.uid === uid); if (!d || d.tracklist) return;
+    const r = await tlHolen({ band: d.band, album: d.album, discogsId: d.discogs_id });
+    if (r.liste && r.liste.length) { const x = daten.find(y => y.uid === uid); if (x && !x.tracklist) { x.tracklist = tlKodieren(r.quelle, r.liste); x.geaendert = Date.now(); speichern(); } }
+  } catch (e) {}
+}
+let tlAbbruch = false;
+function tlUnsicherZeigen(liste) {
+  const box = $("#tlUnsicher"); box.innerHTML = ""; if (!liste.length) return;
+  const h = document.createElement("b"); h.textContent = liste.length + (liste.length === 1 ? " Platte nicht eindeutig" : " Platten nicht eindeutig"); box.appendChild(h);
+  const p = document.createElement("p"); p.className = "hinweis"; p.textContent = "Passt der Vorschlag? ✓ übernimmt die Titelliste, ✕ lässt die Platte aus."; box.appendChild(p);
+  liste.slice().forEach(u => {
+    const z = document.createElement("div"); z.className = "tlu";
+    const tx = document.createElement("div"); tx.className = "tx"; tx.textContent = u.d.band + " – " + u.d.album;
+    const kl = document.createElement("small"); kl.textContent = "Vorschlag: " + u.x.band + " – " + u.x.album + " (" + [u.x.jahr, u.x.label, u.x.formatRoh].filter(Boolean).join(", ") + ")"; tx.appendChild(kl);
+    const ok = document.createElement("button"); ok.type = "button"; ok.textContent = "✓"; ok.setAttribute("aria-label", "Übernehmen");
+    const nein = document.createElement("button"); nein.type = "button"; nein.textContent = "✕"; nein.setAttribute("aria-label", "Auslassen");
+    nein.onclick = () => { liste.splice(liste.indexOf(u), 1); tlUnsicherZeigen(liste); };
+    ok.onclick = async () => {
+      ok.disabled = nein.disabled = true;
+      try { const t = await tlAusMB(u.x.mbid); if (t.liste.length) { u.d.tracklist = tlKodieren(t.quelle, t.liste); u.d.geaendert = Date.now(); speichern(); einstZusammenfassung(); } else toast("Dazu gibt es keine Titel."); }
+      catch (e) { toast("Fehler: " + e.message); ok.disabled = nein.disabled = false; return; }
+      liste.splice(liste.indexOf(u), 1); tlUnsicherZeigen(liste);
+    };
+    z.append(tx, ok, nein); box.appendChild(z);
+  });
+}
+async function tlLauf(alle) {
+  const kandidaten = alleAktiv().filter(d => alle || !d.tracklist), st = $("#tlStatus");
+  if (!kandidaten.length) { st.textContent = "Nichts zu tun: Alle Platten haben schon eine Titelliste."; return; }
+  tlAbbruch = false; $("#tlAlle").disabled = $("#tlAlleNeu").disabled = true; $("#tlStop").hidden = false;
+  const unsicher = []; let ok = 0, nichts = 0, i = 0; tlUnsicherZeigen([]);
+  for (const d of kandidaten) {
+    if (tlAbbruch) break;
+    i++; st.textContent = `Titellisten: ${i} von ${kandidaten.length} … (${ok} gefunden)`;
+    try {
+      const r = await tlHolen({ band: d.band, album: d.album, discogsId: d.discogs_id });
+      if (r.liste && r.liste.length) { d.tracklist = tlKodieren(r.quelle, r.liste); d.geaendert = Date.now(); ok++; speichern(); }
+      else if (r.unsicher) unsicher.push({ d, x: r.unsicher });
+      else nichts++;
+      if (r.quelle === "Discogs") await warte(discogsToken() ? 1100 : 2600);   // Discogs: 25 (ohne Token) bzw. 60 Anfragen pro Minute
+    } catch (e) { nichts++; }
+    einstZusammenfassung();
+  }
+  $("#tlAlle").disabled = $("#tlAlleNeu").disabled = false; $("#tlStop").hidden = true; einstZusammenfassung();
+  st.textContent = (tlAbbruch ? "Abgebrochen. " : "Fertig. ") + `${ok} Titellisten eingetragen, ${unsicher.length} nicht eindeutig, ${nichts} ohne Ergebnis.`;
+  tlUnsicherZeigen(unsicher);
+}
+$("#tlStop").onclick = () => { tlAbbruch = true; };
+$("#tlAlle").onclick = () => tlLauf(false);
+$("#tlAlleNeu").onclick = async () => {
+  const n = alleAktiv().length;
+  if (await frage("Titellisten von " + n + " Platten neu laden?\nBestehende Titellisten werden ersetzt. Das dauert etwa " + Math.ceil(n * 1.6 / 60) + " Minute(n).", ["Alle neu laden", "Abbrechen"]) === 0) tlLauf(true);
+};
 $("#mwBtn").onclick = async () => {
   meldung("Marktwert wird geholt …");
   const mw = await marktwertFuer({ discogsId: formCover.discogs, barcode: $("#f_barcode").value.replace(/\D/g, "") });
