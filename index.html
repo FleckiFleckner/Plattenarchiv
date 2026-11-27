@@ -177,7 +177,7 @@
   .sterneWahl button { background: transparent; border: 0; padding: 2px 6px; font-size: 1.6rem; line-height: 1; color: #4a4560; }
   .sterneWahl button.an { color: var(--stern); }
   .sec .kauf { grid-column: 1 / -1; }
-  body.stat .sortzeile, body.stat #status, body.stat #filter, body.stat #genreLeiste, body.stat #suche { display: none; }
+  body.stat .sortzeile, body.stat #status, body.stat #filter, body.stat #suche { display: none; }
   #liste.stat, #liste.stat:not(.raster) { display: block; background: transparent; padding: 0 16px; width: auto; }
   .stk { background: var(--card); border-radius: 16px; padding: 14px 16px; margin: 0 0 12px; }
   .stk h3 { margin: 0 0 10px; font-size: .78rem; letter-spacing: .14em; text-transform: uppercase; color: var(--akz-hell); }
@@ -341,9 +341,8 @@
     <button type="button" data-m="wunsch">Wunschliste</button>
     <button type="button" data-m="statistik">Statistik</button>
   </div>
-  <div id="genreLeiste" class="seg" role="group" aria-label="Genre"></div>
   <details id="filter">
-    <summary><span class="fbtn">Weitere Filter</span><span id="status"></span></summary>
+    <summary><span class="fbtn">Filter</span><span id="status"></span></summary>
     <div class="grid">
       <div><label>Band</label><input data-f="band"></div>
       <div><label>Album</label><input data-f="album"></div>
@@ -455,7 +454,7 @@
   <div class="eseite" data-seite="ueber" hidden>
     <div class="ekarte">
       <b id="ueberZahlen"></b>
-      <span class="hinweis" id="ueberVersion" style="display:block;margin:2px 0 0">Version 40 (Filter-Bereich neu geordnet)</span>
+      <span class="hinweis" id="ueberVersion" style="display:block;margin:2px 0 0">Version 41 (Genre-Leiste entfernt)</span>
       <p class="hinweis">Die Daten liegen in diesem Browser und – wenn Google Drive verbunden ist – zusätzlich in deinem Drive. Mit „Sync-Datei exportieren“ kannst du jederzeit eine Sicherung ziehen.</p>
     </div>
   </div>
@@ -719,16 +718,6 @@ function optionen(sel, werte, leer) {
 function auswahllistenAktualisieren() {
   const genres = [...new Set(sichtbar().map(d => d.genre).filter(Boolean))].sort((a, b) => a.localeCompare(b, "de"));
   optionen($('[data-f="genre"]'), genres, "alle");
-  const leiste = $("#genreLeiste"); leiste.innerHTML = "";
-  if (genres.length > 1) {
-    const sel = $('[data-f="genre"]');
-    for (const g of ["", ...genres]) {
-      const b = document.createElement("button"); b.type = "button"; b.textContent = g || "Alle";
-      if (sel.value === g) b.className = "on";
-      b.onclick = () => { sel.value = g; render(); };
-      leiste.appendChild(b);
-    }
-  }
   const dl = $("#genreListe"); dl.innerHTML = "";
   genres.forEach(g => { const o = document.createElement("option"); o.value = g; dl.appendChild(o); });
 }
