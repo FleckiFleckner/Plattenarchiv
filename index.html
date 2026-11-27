@@ -12,7 +12,7 @@
     color-scheme: dark;
     --bg: #08070d; --bar: rgba(10,9,16,.78); --card: rgba(20,17,32,.8); --field: #17142a;
     --text: #f3f1ee; --muted: #aeaaa5; --line: rgba(255,255,255,.15);
-    --accent: #b655d8; --akz-hell: #4fb8ae; --wert: #b5e3dd; --seg-bg: rgba(20,17,32,.9); --seg-on: #2f2a46; --glow: rgba(182,85,216,.55); --accent-text: #ffffff; --danger: #ff8f86;
+    --accent: #b655d8; --akz-hell: #4fb8ae; --wert: #b5e3dd; --seg-bg: rgba(20,17,32,.9); --seg-on: #2f2a46; --glow: rgba(182,85,216,.55); --stern: #c4a257; --accent-text: #ffffff; --danger: #ff8f86;
     --titel-schrift: Impact, Haettenschweiler, "Arial Narrow Bold", "Roboto Condensed", sans-serif-condensed, system-ui, sans-serif;
   }
   * { box-sizing: border-box; }
@@ -120,6 +120,39 @@
   #liste.raster .karte { box-shadow: 0 0 12px 2px var(--glow); }
   #liste.raster .karte .cover { box-shadow: none; }
   .gruppe:first-child { margin-top: 4px; }
+  .seg.modus { margin-top: 12px; }
+  .seg.modus button { flex: 1 1 0; text-align: center; }
+  .zchip { display: inline-block; margin-left: 2px; padding: 0 8px; border-radius: 6px; background: rgba(79,184,174,.16); border: 1px solid rgba(79,184,174,.45); color: var(--akz-hell); font-size: .8rem; font-weight: 600; line-height: 1.5; white-space: nowrap; }
+  /* beste Platte: Farbverlauf-Rahmen Lila → Petrol mit Schein */
+  #liste:not(.raster) .karte.top { padding: 5px 7px; margin: 3px -3px; border: 2px solid transparent; border-radius: 12px;
+    background: linear-gradient(rgba(22,17,36,.95), rgba(22,17,36,.95)) padding-box, linear-gradient(120deg, #b655d8, #4fb8ae) border-box;
+    box-shadow: 0 0 16px 1px rgba(120,120,220,.4); }
+  #liste.raster .karte.top { border: 2px solid transparent;
+    background: linear-gradient(rgba(22,17,36,.95), rgba(22,17,36,.95)) padding-box, linear-gradient(120deg, #b655d8, #4fb8ae) border-box;
+    box-shadow: 0 0 16px 2px rgba(120,120,220,.5); }
+  .sterne { display: inline-block; padding: 0 7px; border-radius: 6px; background: rgba(182,85,216,.20); border: 1px solid rgba(182,85,216,.60); box-shadow: 0 0 10px 1px rgba(182,85,216,.5); color: var(--stern); font-size: .8rem; line-height: 1.5; letter-spacing: .06em; white-space: nowrap; }
+  .karte .rechts .tag.ziel { background: transparent; border: 1px solid rgba(255,255,255,.2); color: var(--muted); }
+  .karte .rechts .tag.ziel.ok { border-color: var(--akz-hell); color: var(--akz-hell); }
+  .sterneWahl { display: flex; gap: 2px; }
+  .sterneWahl button { background: transparent; border: 0; padding: 2px 6px; font-size: 1.6rem; line-height: 1; color: #4a4560; }
+  .sterneWahl button.an { color: var(--stern); }
+  .sec .kauf { grid-column: 1 / -1; }
+  body.stat .sortzeile, body.stat #status, body.stat #filter, body.stat #genreLeiste, body.stat #suche { display: none; }
+  #liste.stat, #liste.stat:not(.raster) { display: block; background: transparent; padding: 0 16px; width: auto; }
+  .stk { background: var(--card); border-radius: 16px; padding: 14px 16px; margin: 0 0 12px; }
+  .stk h3 { margin: 0 0 10px; font-size: .78rem; letter-spacing: .14em; text-transform: uppercase; color: var(--akz-hell); }
+  .zahlen { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  .zahl b { display: block; font-size: 1.35rem; font-weight: 700; color: #fff; }
+  .zahl span { font-size: .8rem; color: var(--muted); }
+  .zahl.plus b { color: var(--akz-hell); } .zahl.minus b { color: #ff8f86; }
+  .balken { display: grid; grid-template-columns: minmax(70px, 34%) 1fr auto; gap: 8px; align-items: center; margin: 5px 0; font-size: .9rem; }
+  .balken i { display: block; height: 8px; border-radius: 4px; background: linear-gradient(90deg, var(--accent), var(--akz-hell)); }
+  .balken .n { color: var(--muted); font-size: .85rem; }
+  .zeile { display: flex; justify-content: space-between; gap: 10px; padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,.08); font-size: .92rem; cursor: pointer; }
+  .zeile:last-child { border-bottom: 0; }
+  .zeile span:last-child { color: var(--wert); white-space: nowrap; }
+  .zeile.minus span:last-child { color: #ff8f86; }
+  .hinw { font-size: .85rem; color: var(--muted); margin: 6px 0 0; }
   #ansichtWechsel { font-size: 1.2rem; padding-left: 14px; padding-right: 14px; }
   #liste.raster { grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 10px; }
   #liste.raster .gruppe { grid-column: 1 / -1; }
@@ -137,15 +170,16 @@
   .seg button { flex: 0 0 auto; background: transparent; border: 0; border-radius: 9px; padding: 7px 14px; color: var(--muted); font-size: .9rem; white-space: nowrap; }
   .seg button.on { background: var(--seg-on); color: #fff; font-weight: 600; }
   summary { font-size: .9rem; }
-  #liste:not(.raster) { background: rgba(14,14,18,.86); border-radius: 16px; padding: 4px 14px 8px; gap: 0; width: calc(100% - 32px); }
-  #liste:not(.raster) .karte { background: transparent; border: 0; border-bottom: 1px solid rgba(255,255,255,.09); border-radius: 0; padding: 10px 0; }
-  #liste:not(.raster) .karte:last-child { border-bottom: 0; }
+  #liste:not(.raster) { background: transparent; border-radius: 0; padding: 0; gap: 0; width: calc(100% - 24px); }
+  .gbox { background: rgba(18,15,30,.82); border: 1px solid rgba(255,255,255,.13); border-radius: 14px; padding: 0 10px 2px; margin: 0 0 6px; }
+  #liste:not(.raster) .karte { background: transparent; border: 0; border-bottom: 1px solid rgba(255,255,255,.09); border-radius: 0; padding: 6px 0; margin: 0; gap: 10px; }
+  .gbox .karte:last-child { border-bottom: 0; }
   #liste:not(.raster) .karte .cover { width: 56px; height: 56px; border-radius: 5px; }
-  #liste:not(.raster) .gruppe { margin: 14px 0 2px; padding: 0; border: 0; font-size: .78rem; letter-spacing: .16em; color: var(--akz-hell); text-shadow: none; }
-  #liste:not(.raster) .gruppe:first-child { margin-top: 10px; }
+  #liste:not(.raster) .gruppe { margin: 7px 0 0; padding: 0; border: 0; font-size: .78rem; letter-spacing: .16em; color: var(--akz-hell); text-shadow: none; }
+  #liste:not(.raster) .gruppe:first-child { margin-top: 7px; }
   .karte .rechts { flex: none; text-align: right; display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
-  .karte .links { flex: none; width: 76px; display: flex; flex-direction: column; align-items: center; gap: 4px; }
-  .karte .links .wert { color: var(--wert); font-weight: 600; font-size: .9rem; white-space: nowrap; }
+  .karte .links { flex: none; width: 78px; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .karte .links .wert { display: inline-block; padding: 0 7px; border-radius: 6px; background: rgba(79,184,174,.16); border: 1px solid rgba(79,184,174,.45); color: var(--akz-hell); font-size: .8rem; font-weight: 600; line-height: 1.5; white-space: nowrap; }
   .karte .rechts .tag { font-size: .72rem; background: #26262d; color: #cfcbc6; border-radius: 6px; padding: 2px 7px; }
   #liste.raster .gruppe { margin: 14px 0 2px; font-size: .8rem; letter-spacing: .16em; color: var(--akz-hell); border: 0; }
   /* Formular in Abschnitten */
@@ -202,6 +236,11 @@
     <h1>Plattenarchiv</h1>
   </div>
   <div class="leiste">
+  <div id="modus" class="seg modus" role="group" aria-label="Bereich">
+    <button type="button" data-m="sammlung" class="on">Sammlung</button>
+    <button type="button" data-m="wunsch">Wunschliste</button>
+    <button type="button" data-m="statistik">Statistik</button>
+  </div>
   <input id="suche" type="search" placeholder="Suchen …" autocomplete="off">
   <div id="genreLeiste" class="seg" role="group" aria-label="Genre"></div>
   <details id="filter">
@@ -215,6 +254,7 @@
       <div><label>Label</label><input data-f="label"></div>
       <div><label>Format</label><select data-f="format"></select></div>
       <div><label>Zustand</label><select data-f="zustand"></select></div>
+      <div><label>Bewertung</label><select data-f="bewertung"></select></div>
       <div class="full row">
         <button id="reset" type="button">Filter zurücksetzen</button>
       </div>
@@ -276,9 +316,10 @@
       <input id="discogsToken" type="password" autocomplete="off" placeholder="Token einfügen"></div></div>
     <div class="aktionen" style="margin:8px 0 0">
       <button type="button" id="mwAlle">↻ Fehlende Marktwerte nachtragen</button>
+      <button type="button" id="mwAlleNeu">↻ Alle Marktwerte aktualisieren</button>
       <button type="button" id="mwStop" hidden>Abbrechen</button>
     </div>
-    <p class="hinweis" id="mwStatus">Füllt nur leere Marktwert-Felder bei Platten mit Barcode. Vorhandene Werte und alle anderen Daten bleiben unverändert.</p>
+    <p class="hinweis" id="mwStatus">„Fehlende nachtragen“ füllt nur leere Marktwert-Felder. „Alle aktualisieren“ holt auch für Platten mit vorhandenem Wert den aktuellen Preis (Sammlung und Wunschliste); der bisherige Wert wird als Vergleich gemerkt. Alle anderen Daten bleiben unverändert.</p>
     <p class="hinweis">Ohne Token nutze ich nur Discogs-Links, die MusicBrainz kennt. Mit Token suche ich bei Discogs direkt per Barcode.
       Token erzeugen: Discogs → Settings → Developers → „Generate new token“. Er bleibt nur auf diesem Gerät.</p>
   </section>
@@ -364,7 +405,7 @@ const FELDER = [
   ["land", "Land"], ["anzahl", "Anzahl"], ["preis", "EK-Preis (€)"], ["marktwert", "Marktwert (€, ca.)"], ["notizen", "Notizen"]
 ];   // „preis“ bleibt intern der Schlüssel für den EK-Preis, damit alte Einträge und Sync-Dateien passen
 const KEYS = FELDER.map(f => f[0]);
-const EXTRA = ["cover_mbid", "cover_foto", "discogs_id"];   // werden nur mitgeführt und synchronisiert
+const EXTRA = ["cover_mbid", "cover_foto", "discogs_id", "bewertung", "wunsch", "zielpreis", "mw_alt", "mw_datum"];   // werden nur mitgeführt und synchronisiert
 const PFLICHT = ["band", "album", "genre"];
 const FORMATE = ["LP", "Doppel-LP", "EP", "Single 7\"", "Maxi 12\"", "Box-Set", "Sonstiges"];
 // Einfache Zustandsstufen. Alte Einträge mit Goldmine-Kürzeln (M, NM, VG+ …) bleiben unverändert gespeichert und werden nur umgedeutet angezeigt.
@@ -404,7 +445,14 @@ function toast(text) {
   const t = document.createElement("div"); t.className = "toast"; t.textContent = text;
   obersterContainer().appendChild(t); setTimeout(() => t.remove(), Math.max(4500, text.length * 60));
 }
-const sichtbar = () => daten.filter(d => !d.geloescht);
+let modus = "sammlung";   // "sammlung" | "wunsch" | "statistik"
+const alleAktiv = () => daten.filter(d => !d.geloescht);
+const sichtbar = () => alleAktiv().filter(d => (modus === "wunsch") === (d.wunsch === "1"));   // Statistik zählt zur Sammlung
+const sammlung = () => alleAktiv().filter(d => d.wunsch !== "1");
+const zahl = v => { const n = parseFloat(String(v ?? "").replace(/\./g, "").replace(",", ".")); return isNaN(n) ? null : n; };
+const zahlKurz = v => { const n = parseFloat(String(v ?? "").replace(",", ".")); return isNaN(n) ? null : n; };
+const geld = n => n.toLocaleString("de-DE", { style: "currency", currency: "EUR" });
+const sterneText = n => "★".repeat(n) + "☆".repeat(5 - n);
 
 // ---------- Filter / Anzeige ----------
 function filterWerte() {
@@ -420,6 +468,7 @@ function gefiltert() {
     for (const [k, v] of Object.entries(f)) {
       if (k === "zustand") { if (norm(zustandNeu(d[k])) !== norm(v)) return false; }
       else if (["genre", "format"].includes(k)) { if (norm(d[k]) !== norm(v)) return false; }
+      else if (k === "bewertung") { if ((parseInt(d.bewertung, 10) || 0) < parseInt(v, 10)) return false; }
       else if (!norm(d[k]).includes(norm(v))) return false;
     }
     return true;
@@ -431,7 +480,7 @@ function vergleich(a, b) {
     const rang = v => { const i = ZUSTAND.indexOf(zustandNeu(v)); return i < 0 ? 99 : i; };
     return rang(x) - rang(y);
   }
-  if (["jahr", "orig_jahr", "preis", "marktwert", "anzahl"].includes(sortFeld)) {
+  if (["jahr", "orig_jahr", "preis", "marktwert", "anzahl", "bewertung"].includes(sortFeld)) {
     const nx = parseFloat(String(x).replace(",", ".")), ny = parseFloat(String(y).replace(",", "."));
     if (isNaN(nx) && isNaN(ny)) return 0; if (isNaN(nx)) return 1; if (isNaN(ny)) return -1;
     return nx - ny;
@@ -439,28 +488,42 @@ function vergleich(a, b) {
   return String(x).localeCompare(String(y), "de", { sensitivity: "base", numeric: true });
 }
 function render() {
+  document.body.classList.toggle("stat", modus === "statistik");
+  document.querySelectorAll("#modus button").forEach(b => {
+    b.classList.toggle("on", b.dataset.m === modus);
+    if (b.dataset.m === "wunsch") b.textContent = "Wunschliste" + (alleAktiv().some(d => d.wunsch === "1") ? " (" + alleAktiv().filter(d => d.wunsch === "1").length + ")" : "");
+  });
+  if (modus === "statistik") { renderStatistik(); return; }
+  $("#liste").classList.remove("stat");
   const zeilen = gefiltert().sort(vergleich);
   if (rueckwaerts) zeilen.reverse();
   const liste = $("#liste"); liste.innerHTML = ""; liste.classList.toggle("raster", raster);
+  let ziel = liste;   // in der Listenansicht liegt jede Gruppe in einem eigenen Rahmen, in der Bilderansicht bleibt das Raster flach
+  const neueBox = () => { if (raster) return liste; const b = document.createElement("div"); b.className = "gbox"; liste.appendChild(b); return b; };
   if (!zeilen.length) {
     const p = document.createElement("div"); p.className = "leer";
-    p.textContent = sichtbar().length ? "Keine Treffer für diese Filter." : "Noch keine Platten – mit + die erste anlegen.";
+    p.textContent = sichtbar().length ? "Keine Treffer für diese Filter."
+      : modus === "wunsch" ? "Die Wunschliste ist leer – mit + eine Platte per Barcode oder von Hand hinzufügen." : "Noch keine Platten – mit + die erste anlegen.";
     liste.appendChild(p);
   }
   const gruppieren = !["preis", "marktwert", "notizen", "katalognr", "barcode"].includes(sortFeld);
   let letzteGruppe = null;
+  if (!gruppieren && zeilen.length) ziel = neueBox();
+  const besteStufe = Math.max(0, ...sichtbar().map(d => Math.min(5, parseInt(d.bewertung, 10) || 0)));   // über die ganze Liste, unabhängig von Filtern
   for (const d of zeilen) {
     if (gruppieren) {
-      const roh = sortFeld === "zustand" ? zustandNeu(d[sortFeld]) : String(d[sortFeld] ?? "").trim();
+      const roh = sortFeld === "zustand" ? zustandNeu(d[sortFeld])
+        : sortFeld === "bewertung" ? (parseInt(d.bewertung, 10) ? parseInt(d.bewertung, 10) + (parseInt(d.bewertung, 10) === 1 ? " Stern" : " Sterne") : "")
+        : String(d[sortFeld] ?? "").trim();
       const schluessel = norm(roh);
       if (schluessel !== letzteGruppe) {
-        letzteGruppe = schluessel;
+        letzteGruppe = schluessel; ziel = neueBox();
         const h = document.createElement("div"); h.className = "gruppe";
         h.textContent = !roh ? "(ohne Angabe)" : sortFeld === "anzahl" ? roh + "×" : roh;
-        liste.appendChild(h);
+        ziel.appendChild(h);
       }
     }
-    const k = document.createElement("div"); k.className = "karte mitbild";
+    const k = document.createElement("div"); k.className = "karte mitbild" + (besteStufe >= 3 && parseInt(d.bewertung, 10) === besteStufe ? " top" : "");   // beste vergebene Bewertung (mind. 3 Sterne): ganzer Eintrag mit leuchtendem Rahmen
     const meta = [d.genre, d.orig_jahr && "Orig. " + d.orig_jahr, d.jahr && "Pressung " + d.jahr,
       d.format].filter(Boolean).join(" · ");
     const band = document.createElement("b"); band.textContent = d.band;
@@ -468,6 +531,10 @@ function render() {
     if (stueck > 1) { const bd = document.createElement("span"); bd.className = "badge"; bd.textContent = stueck + "×"; bd.title = stueck + "× vorhanden"; band.append(" ", bd); }
     const alb = document.createElement("div"); alb.className = "album"; alb.textContent = d.album;
     const m = document.createElement("div"); m.className = "meta"; m.textContent = meta;
+    if (d.zustand && !raster) {   // Zustand als hervorgehobenes Kürzel am Ende der Datenzeile
+      const t = document.createElement("span"); t.className = "zchip"; t.textContent = zustandNeu(d.zustand); t.title = "Zustand";
+      if (meta) m.append(" "); m.append(t);
+    }
     const text = document.createElement("div"); text.style.minWidth = "0"; text.append(band, alb, m);
     if (raster) {
       k.title = d.band + " – " + d.album;
@@ -476,16 +543,22 @@ function render() {
     } else {
       text.style.flex = "1 1 auto";
       const rechts = document.createElement("div"); rechts.className = "rechts";
-      if (d.zustand) { const t = document.createElement("span"); t.className = "tag"; t.textContent = zustandNeu(d.zustand); rechts.append(t); }
+      const sb = parseInt(d.bewertung, 10);
+      if (sb >= 1 && sb <= 5) { const t = document.createElement("span"); t.className = "sterne"; t.textContent = sterneText(sb); t.title = sb + " von 5 Sternen"; rechts.append(t); }
+      if (d.wunsch === "1" && d.zielpreis) {
+        const t = document.createElement("span"), zp = zahlKurz(d.zielpreis), mw = zahlKurz(d.marktwert);
+        t.className = "tag ziel" + (zp != null && mw != null && mw <= zp ? " ok" : ""); t.textContent = "Ziel " + d.zielpreis + " €";
+        t.title = t.className.includes("ok") ? "Aktueller Marktwert liegt im Zielpreis" : "Zielpreis"; rechts.append(t);
+      }
       const links = document.createElement("div"); links.className = "links";   // Cover mit Marktwert darunter
       links.append(coverElement(d));
       if (d.marktwert) { const w = document.createElement("span"); w.className = "wert"; w.title = "Marktwert (ca.)"; w.textContent = "≈ " + d.marktwert + " €"; links.append(w); }
       k.append(links, text, rechts);
     }
     k.onclick = () => oeffne(d.uid);
-    liste.appendChild(k);
+    ziel.appendChild(k);
   }
-  $("#status").textContent = `${zeilen.length} von ${sichtbar().length} Platten angezeigt`;
+  $("#status").textContent = `${zeilen.length} von ${sichtbar().length} ${modus === "wunsch" ? "Wunschlisten-Platten" : "Platten"} angezeigt`;
   auswahllistenAktualisieren();
 }
 function optionen(sel, werte, leer) {
@@ -542,12 +615,37 @@ function baueFormular() {
     }
     el.id = "f_" + k; div.append(lab, el); sec.appendChild(div);
   }
+  const bs = document.createElement("div"); bs.className = "sec";
+  bs.innerHTML = '<h4>Meine Bewertung</h4><div class="full"><div class="sterneWahl" id="sterneWahl" role="group" aria-label="Bewertung"></div></div>'
+    + '<div class="full" id="wunschBox"><label for="f_zielpreis">Zielpreis (€)</label><input id="f_zielpreis" inputmode="decimal" placeholder="z. B. 25,00"></div>'
+    + '<div class="full kauf" id="kaufBox"><button type="button" id="gekauft">✓ Gekauft – in die Sammlung übernehmen</button></div>';
+  grid.appendChild(bs);
+  const sw = $("#sterneWahl");
+  for (let i = 1; i <= 5; i++) {
+    const b = document.createElement("button"); b.type = "button"; b.textContent = "★"; b.setAttribute("aria-label", i + " Sterne");
+    b.onclick = () => { formBewertung = formBewertung === i ? 0 : i; sterneZeigen(); };
+    sw.appendChild(b);
+  }
+  $("#gekauft").onclick = () => {
+    formWunsch = false; wunschZeigen(); $("#f_preis").focus();
+    toast("Wird in die Sammlung übernommen – EK-Preis und Zustand ergänzen und speichern.");
+  };
+}
+let formBewertung = 0, formWunsch = false;
+function sterneZeigen() { document.querySelectorAll("#sterneWahl button").forEach((b, i) => b.classList.toggle("an", i < formBewertung)); }
+function wunschZeigen() {
+  $("#wunschBox").style.display = formWunsch ? "" : "none";
+  $("#kaufBox").style.display = formWunsch && aktuelleUid ? "" : "none";
+  $("#dlgTitel").textContent = aktuelleUid ? (formWunsch ? "Wunschlisten-Platte bearbeiten" : "Platte bearbeiten") : (formWunsch ? "Neu auf der Wunschliste" : "Neue Platte");
 }
 function oeffne(uid) {
   aktuelleUid = uid || null;
   const d = uid ? daten.find(x => x.uid === uid) : null;
-  $("#dlgTitel").textContent = d ? "Platte bearbeiten" : "Neue Platte";
   KEYS.forEach(k => { $("#f_" + k).value = d ? (k === "zustand" ? zustandNeu(d[k]) : (d[k] || "")) : ""; });
+  formBewertung = d ? Math.min(5, parseInt(d.bewertung, 10) || 0) : 0; sterneZeigen();
+  formWunsch = d ? d.wunsch === "1" : modus === "wunsch";
+  $("#f_zielpreis").value = d ? d.zielpreis || "" : "";
+  wunschZeigen();
   const zsel = $("#f_zustand");
   [...zsel.options].forEach(o => { if (o.value && !ZUSTAND.includes(o.value)) o.remove(); });   // unbekannter Altwert (z. B. selbst getippt) bleibt als Option erhalten, damit er beim Speichern nicht verloren geht
   if (zsel.value !== (d ? zustandNeu(d.zustand) : "")) { const o = document.createElement("option"); o.value = o.textContent = zustandNeu(d.zustand); zsel.appendChild(o); zsel.value = o.value; }
@@ -600,6 +698,8 @@ function frage(text, knoepfe) {   // Auswahl-Dialog; liefert den Index des Knopf
 $("#form").addEventListener("submit", async e => {
   e.preventDefault();
   const werte = {}; KEYS.forEach(k => werte[k] = $("#f_" + k).value.trim());
+  werte.bewertung = formBewertung ? String(formBewertung) : ""; werte.wunsch = formWunsch ? "1" : "";
+  werte.zielpreis = formWunsch ? $("#f_zielpreis").value.trim() : "";
   werte.cover_foto = formCover.foto; werte.cover_mbid = formCover.mbid; werte.discogs_id = formCover.discogs;
   const fehlt = FELDER.filter(([k]) => PFLICHT.includes(k) && !werte[k]).map(f => f[1]);
   if (fehlt.length) { toast("Bitte ausfüllen: " + fehlt.join(", ")); return; }
@@ -636,6 +736,63 @@ $("#loeschen").onclick = async () => {
 };
 $("#neu").onclick = () => scanStart();   // Plus öffnet direkt den Barcode-Scan; „Von Hand eintragen“ führt zum Formular
 
+// ---------- Statistik ----------
+function renderStatistik() {
+  const box = $("#liste"); box.innerHTML = ""; box.classList.add("stat"); box.classList.remove("raster");
+  const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+  const karte = titel => { const k = el("section", "stk"); k.append(el("h3", "", titel)); box.append(k); return k; };
+  const S = sammlung(), W = alleAktiv().filter(d => d.wunsch === "1");
+  if (!S.length && !W.length) { box.append(el("div", "leer", "Noch keine Daten – lege zuerst ein paar Platten an.")); return; }
+  const stk = d => Math.max(1, parseInt(d.anzahl, 10) || 1);
+  const platten = S.reduce((a, d) => a + stk(d), 0);
+  let wert = 0, mitWert = 0, ek = 0, mitEk = 0, dMw = 0, dEk = 0, beide = 0, sumB = 0, nB = 0;
+  for (const d of S) {
+    const mw = zahlKurz(d.marktwert), pr = zahlKurz(d.preis), b = parseInt(d.bewertung, 10);
+    if (mw != null) { wert += mw * stk(d); mitWert++; }
+    if (pr != null) { ek += pr * stk(d); mitEk++; }
+    if (mw != null && pr != null) { dMw += mw * stk(d); dEk += pr * stk(d); beide++; }
+    if (b >= 1 && b <= 5) { sumB += b; nB++; }
+  }
+  const k1 = karte("Deine Sammlung"), z = el("div", "zahlen"); k1.append(z);
+  const zz = (wert_, text, cls) => { const d = el("div", "zahl" + (cls ? " " + cls : "")); d.append(el("b", "", wert_), el("span", "", text)); z.append(d); };
+  zz(String(platten), "Platten (" + S.length + " Einträge)");
+  zz(geld(wert), "Marktwert gesamt" + (mitWert < S.length ? " (" + mitWert + " von " + S.length + " mit Wert)" : ""));
+  zz(geld(ek), "Eingekauft für" + (mitEk < S.length ? " (" + mitEk + " mit EK-Preis)" : ""));
+  if (beide) { const diff = dMw - dEk; zz((diff >= 0 ? "+" : "−") + geld(Math.abs(diff)), "Wertentwicklung (" + beide + " Platten mit EK-Preis und Marktwert)", diff >= 0 ? "plus" : "minus"); }
+  if (nB) zz("Ø " + (sumB / nB).toFixed(1).replace(".", ",") + " ★", "Bewertung (" + nB + " bewertet)");
+  const wMw = W.reduce((a, d) => a + (zahlKurz(d.marktwert) || 0), 0);
+  if (W.length) zz(String(W.length), "auf der Wunschliste" + (wMw ? " · ca. " + geld(wMw) : ""));
+  const zeile = (d, rechts, cls) => { const r = el("div", "zeile" + (cls ? " " + cls : "")); r.append(el("span", "", d.band + " – " + d.album), el("span", "", rechts)); r.onclick = () => oeffne(d.uid); return r; };
+  const teuer = S.filter(d => zahlKurz(d.marktwert) != null).sort((a, b) => zahlKurz(b.marktwert) - zahlKurz(a.marktwert)).slice(0, 5);
+  if (teuer.length) { const k = karte("Wertvollste Platten"); teuer.forEach(d => k.append(zeile(d, geld(zahlKurz(d.marktwert))))); }
+  const top = nB ? S.filter(d => parseInt(d.bewertung, 10) >= 1).sort((a, b) => (parseInt(b.bewertung, 10) - parseInt(a.bewertung, 10)) || String(a.band).localeCompare(String(b.band), "de")).slice(0, 5) : [];
+  if (top.length) { const k = karte("Am besten bewertet"); top.forEach(d => k.append(zeile(d, sterneText(parseInt(d.bewertung, 10))))); }
+  const balken = (titel, map, max) => {
+    const e = [...map.entries()].sort((a, b) => b[1] - a[1] || String(a[0]).localeCompare(String(b[0]), "de")).slice(0, max);
+    if (!e.length) return; const k = karte(titel), hoechst = e[0][1];
+    e.forEach(([n, c]) => { const r = el("div", "balken"), b = el("i"); b.style.width = Math.max(4, c / hoechst * 100) + "%"; r.append(el("span", "", n), b, el("span", "n", String(c))); k.append(r); });
+  };
+  const zaehle = fn => { const m = new Map(); for (const d of S) { const k = fn(d); if (k) m.set(k, (m.get(k) || 0) + stk(d)); } return m; };
+  balken("Nach Genre", zaehle(d => d.genre), 8);
+  balken("Nach Jahrzehnt (Erstveröffentlichung)", zaehle(d => { const j = parseInt(d.orig_jahr || d.jahr, 10); return j ? Math.floor(j / 10) * 10 + "er" : ""; }), 10);
+  balken("Meistvertretene Bands", zaehle(d => d.band), 5);
+  const ver = S.concat(W).filter(d => d.mw_alt && zahlKurz(d.marktwert) != null && zahlKurz(d.mw_alt) != null)
+    .map(d => ({ d, delta: zahlKurz(d.marktwert) - zahlKurz(d.mw_alt) })).filter(x => Math.abs(x.delta) >= 0.01);
+  if (ver.length) {
+    const k = karte("Veränderung seit dem letzten Abgleich");
+    ver.sort((a, b) => b.delta - a.delta);
+    [...ver.filter(x => x.delta > 0).slice(0, 3), ...ver.filter(x => x.delta < 0).slice(-3).reverse()]
+      .forEach(x => k.append(zeile(x.d, (x.delta > 0 ? "+" : "−") + geld(Math.abs(x.delta)), x.delta < 0 ? "minus" : "")));
+  }
+  const ohneMw = S.filter(d => zahlKurz(d.marktwert) == null).length, ohneB = S.filter(d => !(parseInt(d.bewertung, 10) >= 1)).length;
+  if (ohneMw || ohneB) {
+    const k = karte("Lücken");
+    if (ohneMw) k.append(el("p", "hinw", (ohneMw === 1 ? "1 Platte hat" : ohneMw + " Platten haben") + " keinen Marktwert – in den Einstellungen („Design & Einstellungen“) lässt sich das nachtragen und aktualisieren."));
+    if (ohneB) k.append(el("p", "hinw", (ohneB === 1 ? "1 Platte ist" : ohneB + " Platten sind") + " noch nicht bewertet."));
+    const b = el("button", "", "Zu den Marktwert-Einstellungen"); b.type = "button"; b.style.marginTop = "8px"; b.onclick = () => $("#einstDlg").showModal(); k.append(b);
+  }
+}
+
 // ---------- Filter-Steuerung ----------
 function baueFilter() {
   optionen($('[data-f="format"]'), FORMATE, "alle");
@@ -644,7 +801,13 @@ function baueFilter() {
   FELDER.filter(f => f[0] !== "notizen").forEach(([k, n]) => {
     const o = document.createElement("option"); o.value = k; o.textContent = n; s.appendChild(o);
   });
+  { const o = document.createElement("option"); o.value = "bewertung"; o.textContent = "Bewertung"; s.appendChild(o); }
+  const bf = $('[data-f="bewertung"]');
+  [["", "alle"], ["1", "ab 1 Stern"], ["2", "ab 2 Sternen"], ["3", "ab 3 Sternen"], ["4", "ab 4 Sternen"], ["5", "nur 5 Sterne"]].forEach(([v, t]) => {
+    const o = document.createElement("option"); o.value = v; o.textContent = t; bf.appendChild(o);
+  });
   s.onchange = () => { sortFeld = s.value; render(); };
+  document.querySelectorAll("#modus button").forEach(b => b.onclick = () => { modus = b.dataset.m; render(); });
   const aw = $("#ansichtWechsel");
   const ansichtZeigen = () => { aw.textContent = raster ? "☰" : "▦"; aw.title = aw.ariaLabel = raster ? "Zur Listenansicht" : "Zur Bilderansicht"; };
   ansichtZeigen();
@@ -1116,6 +1279,18 @@ async function uebernehmen(r, code) {
 }
 async function sucheBarcode(code) {
   if (!/^\d{8,14}$/.test(code)) { toast("Das sieht nicht nach einem Barcode aus (8–14 Ziffern)."); return; }
+  const gleichCode = d => ziffern(d.barcode) && ziffern(d.barcode) === ziffern(code);
+  if (modus !== "wunsch") {
+    const w = alleAktiv().find(d => d.wunsch === "1" && gleichCode(d));
+    if (w) {
+      const wahl = await frage("Diese Platte steht auf deiner Wunschliste:\n" + beschreibe(w), ["Jetzt in die Sammlung übernehmen", "Trotzdem neu anlegen", "Abbrechen"]);
+      if (wahl === 0) { w.wunsch = ""; w.zielpreis = ""; w.geaendert = Date.now(); speichern(); render(); toast("In die Sammlung übernommen – bitte EK-Preis und Zustand ergänzen."); oeffne(w.uid); return; }
+      if (wahl !== 1) return;
+    }
+  } else {
+    const h = alleAktiv().find(d => d.wunsch !== "1" && gleichCode(d));
+    if (h && await frage("Diese Platte hast du schon in der Sammlung:\n" + beschreibe(h), ["Trotzdem auf die Wunschliste", "Abbrechen"]) !== 0) return;
+  }
   // Schon im Archiv? Gleicher Barcode = dieselbe Ausgabe → Hinweis und Anzahl erhöhen.
   const v = findeVorhanden({ barcode: code });
   if (v) {
@@ -1473,18 +1648,19 @@ $("#mwBtn").onclick = async () => {
 let mwAbbruch = false;
 const warte = ms => new Promise(r => setTimeout(r, ms));
 $("#mwStop").onclick = () => { mwAbbruch = true; };
-$("#mwAlle").onclick = async () => {
-  const kandidaten = sichtbar().filter(d => !String(d.marktwert || "").trim() && String(d.barcode || "").replace(/\D/g, ""));
+async function mwLauf(alle) {
+  const hat = d => String(d.barcode || "").replace(/\D/g, "") || d.discogs_id;
+  const kandidaten = alleAktiv().filter(d => hat(d) && (alle || !String(d.marktwert || "").trim()));
   const st = $("#mwStatus");
-  if (!kandidaten.length) { st.textContent = "Nichts zu tun: Alle Platten mit Barcode haben schon einen Marktwert."; return; }
-  mwAbbruch = false; $("#mwAlle").disabled = true; $("#mwStop").hidden = false;
+  if (!kandidaten.length) { st.textContent = alle ? "Nichts zu tun: keine Platte mit Barcode oder Discogs-Verknüpfung." : "Nichts zu tun: Alle Platten mit Barcode haben schon einen Marktwert."; return; }
+  mwAbbruch = false; $("#mwAlle").disabled = $("#mwAlleNeu").disabled = true; $("#mwStop").hidden = false;
   let ok = 0, nichts = 0, i = 0;
   for (const d of kandidaten) {
     if (mwAbbruch) break;
     i++; st.textContent = `Marktwerte: ${i} von ${kandidaten.length} … (${ok} gefunden)`;
-    const code = String(d.barcode).replace(/\D/g, "");
+    const code = String(d.barcode || "").replace(/\D/g, "");
     let mw = await marktwertFuer({ discogsId: d.discogs_id, barcode: code });
-    if (!mw.wert && !mw.id) {   // über MusicBrainz die Ausgabe suchen und deren Discogs-Link nutzen
+    if (!mw.wert && !mw.id && code) {   // über MusicBrainz die Ausgabe suchen und deren Discogs-Link nutzen
       try {
         let l = await sucheOnline("barcode:" + code);
         if (!l.length && code.length === 13 && code[0] === "0") l = await sucheOnline("barcode:" + code.slice(1));
@@ -1492,12 +1668,20 @@ $("#mwAlle").onclick = async () => {
       } catch (e) {}
     }
     if (mw.id && !d.discogs_id) { d.discogs_id = mw.id; d.geaendert = Date.now(); }
-    if (mw.wert) { d.marktwert = mw.wert; d.geaendert = Date.now(); ok++; } else nichts++;
+    if (mw.wert) {
+      if (String(d.marktwert || "").trim() && d.marktwert !== mw.wert) { d.mw_alt = d.marktwert; d.mw_datum = new Date().toISOString().slice(0, 10); }
+      d.marktwert = mw.wert; d.geaendert = Date.now(); ok++;
+    } else nichts++;
     speichern(); render();
     await warte(1200);
   }
-  $("#mwAlle").disabled = false; $("#mwStop").hidden = true;
+  $("#mwAlle").disabled = $("#mwAlleNeu").disabled = false; $("#mwStop").hidden = true;
   st.textContent = (mwAbbruch ? "Abgebrochen. " : "Fertig. ") + `${ok} Marktwerte eingetragen, ${nichts} ohne Ergebnis (nicht gefunden oder aktuell nichts im Angebot).`;
+}
+$("#mwAlle").onclick = () => mwLauf(false);
+$("#mwAlleNeu").onclick = async () => {
+  const n = alleAktiv().filter(d => String(d.barcode || "").replace(/\D/g, "") || d.discogs_id).length;
+  if (await frage("Marktwerte von " + n + " Platten neu bei Discogs abfragen?\nBestehende Werte werden durch den aktuellen Preis ersetzt – der bisherige Wert bleibt als Vergleich gespeichert. Das dauert etwa " + Math.ceil(n * 2.5 / 60) + " Minute(n).", ["Aktualisieren", "Abbrechen"]) === 0) mwLauf(true);
 };
 $("#discogsToken").value = discogsToken();
 $("#discogsToken").addEventListener("change", e => {
