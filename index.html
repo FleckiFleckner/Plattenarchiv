@@ -280,6 +280,8 @@
   .info summary { font-size: .82rem; padding: 2px 0; } .info { margin: 0 0 8px; }
   .chips { display: flex; gap: 6px; flex-wrap: wrap; padding: 4px 0 6px; }
   .chips button { padding: 7px 12px; border-radius: 999px; font-size: .85rem; }
+  .mchip { display: inline-block; margin-left: 2px; padding: 0 8px; border-radius: 6px; background: rgba(182,85,216,.16); border: 1px solid rgba(182,85,216,.5); color: #e2b6f2; font-size: .78rem; font-weight: 600; line-height: 1.5; white-space: nowrap; }
+  #markenChips button::after { content: " ×"; opacity: .7; }
   .chips button.on { border-color: var(--accent); background: rgba(182,85,216,.22); box-shadow: 0 0 10px rgba(182,85,216,.35); }
   #loeschen { padding: 10px 14px; }
   /* Sortierleiste im Stil der Liste */
@@ -372,6 +374,8 @@
       <div><label>Format</label><select data-f="format"></select></div>
       <div><label>Zustand</label><select data-f="zustand"></select></div>
       <div><label>Bewertung</label><select data-f="bewertung"></select></div>
+      <div><label>Marke</label><select data-f="marke"></select></div>
+      <div><label>Cover</label><select data-f="cover"><option value="">alle</option><option value="ohne">ohne Cover</option></select></div>
       <div class="full row">
         <button id="reset" type="button">Filter zurücksetzen</button>
       </div>
@@ -474,7 +478,7 @@
   <div class="eseite" data-seite="ueber" hidden>
     <div class="ekarte">
       <b id="ueberZahlen"></b>
-      <span class="hinweis" id="ueberVersion" style="display:block;margin:2px 0 0">Version 47 (Kürzere Sortier-Namen)</span>
+      <span class="hinweis" id="ueberVersion" style="display:block;margin:2px 0 0">Version 49 (Filter ohne Cover)</span>
       <p class="hinweis">Die Daten liegen in diesem Browser und – wenn Google Drive verbunden ist – zusätzlich in deinem Drive. Mit „Sync-Datei exportieren“ kannst du jederzeit eine Sicherung ziehen.</p>
     </div>
   </div>
@@ -550,6 +554,7 @@
   </div>
 </dialog>
 <datalist id="genreListe"></datalist>
+<datalist id="markenDatalist"></datalist>
 <datalist id="haendlerListe"></datalist>
 <div id="lade"></div>
 
@@ -600,7 +605,7 @@ const FELDER = [
   ["land", "Land"], ["anzahl", "Anzahl"], ["preis", "EK-Preis (€)"], ["marktwert", "Marktwert (€, ca.)"], ["notizen", "Notizen"]
 ];   // „preis“ bleibt intern der Schlüssel für den EK-Preis, damit alte Einträge und Sync-Dateien passen
 const KEYS = FELDER.map(f => f[0]);
-const EXTRA = ["cover_mbid", "cover_foto", "discogs_id", "bewertung", "wunsch", "zielpreis", "mw_alt", "mw_datum", "angelegt", "kaufdatum", "haendler"];   // werden nur mitgeführt und synchronisiert
+const EXTRA = ["cover_mbid", "cover_foto", "discogs_id", "bewertung", "wunsch", "zielpreis", "mw_alt", "mw_datum", "angelegt", "kaufdatum", "haendler", "marken"];   // werden nur mitgeführt und synchronisiert
 const PFLICHT = ["band", "album", "genre"];
 const FORMATE = ["LP", "Doppel-LP", "EP", "Single 7\"", "Maxi 12\"", "Box-Set", "Sonstiges"];
 // Einfache Zustandsstufen. Alte Einträge mit Goldmine-Kürzeln (M, NM, VG+ …) bleiben unverändert gespeichert und werden nur umgedeutet angezeigt.
@@ -652,6 +657,8 @@ const alleAktiv = () => daten.filter(d => !d.geloescht);
 const sichtbar = () => alleAktiv().filter(d => (modus === "wunsch") === (d.wunsch === "1"));   // Statistik zählt zur Sammlung
 const sammlung = () => alleAktiv().filter(d => d.wunsch !== "1");
 const zahl = v => { const n = parseFloat(String(v ?? "").replace(/\./g, "").replace(",", ".")); return isNaN(n) ? null : n; };
+const markenListe = d => { const aus = [], g = new Set(); String(d && d.marken || "").split(/\s*[,;]\s*/).forEach(m => { m = m.trim(); if (m && !g.has(m.toLowerCase())) { g.add(m.toLowerCase()); aus.push(m); } }); return aus; };
+const MARKEN_VORSCHLAG = ["Signiert", "Limited Edition", "Erstpressung", "Zum Verkaufen", "Verliehen"];
 const zahlKurz = v => { const n = parseFloat(String(v ?? "").replace(",", ".")); return isNaN(n) ? null : n; };
 const geld = n => n.toLocaleString("de-DE", { style: "currency", currency: "EUR" });
 const sterneText = n => "★".repeat(n) + "☆".repeat(5 - n);
@@ -666,10 +673,12 @@ function gefiltert() {
   const suche = norm($("#suche").value.trim());
   const f = filterWerte();
   return sichtbar().filter(d => {
-    if (suche && !KEYS.some(k => norm(d[k]).includes(suche))) return false;
+    if (suche && !KEYS.some(k => norm(d[k]).includes(suche)) && !norm(d.marken).includes(suche)) return false;
     for (const [k, v] of Object.entries(f)) {
       if (k === "zustand") { if (norm(zustandNeu(d[k])) !== norm(v)) return false; }
       else if (["genre", "format"].includes(k)) { if (norm(d[k]) !== norm(v)) return false; }
+      else if (k === "cover") { if (hatCover(d)) return false; }
+      else if (k === "marke") { if (!markenListe(d).some(m => norm(m) === norm(v))) return false; }
       else if (k === "bewertung") { if ((parseInt(d.bewertung, 10) || 0) < parseInt(v, 10)) return false; }
       else if (!norm(d[k]).includes(norm(v))) return false;
     }
@@ -738,6 +747,7 @@ function render() {
       const t = document.createElement("span"); t.className = "zchip"; t.textContent = zustandNeu(d.zustand); t.title = "Zustand";
       if (meta) m.append(" "); m.append(t);
     }
+    if (!raster) markenListe(d).forEach(x => { const t = document.createElement("span"); t.className = "mchip"; t.textContent = x; t.title = "Marke"; m.append(" ", t); });
     const text = document.createElement("div"); text.style.minWidth = "0"; text.append(band, alb, m);
     if (raster) {
       k.title = d.band + " – " + d.album;
@@ -778,6 +788,9 @@ function optionen(sel, werte, leer) {
 function auswahllistenAktualisieren() {
   const genres = [...new Set(sichtbar().map(d => d.genre).filter(Boolean))].sort((a, b) => a.localeCompare(b, "de"));
   optionen($('[data-f="genre"]'), genres, "alle");
+  const alleMarken = [...new Set(alleAktiv().flatMap(markenListe))].sort((a, b) => a.localeCompare(b, "de"));
+  optionen($('[data-f="marke"]'), alleMarken, "alle");
+  const ml = $("#markenDatalist"); ml.innerHTML = ""; alleMarken.forEach(m => { const o = document.createElement("option"); o.value = m; ml.appendChild(o); });
   const hl = $("#haendlerListe"); hl.innerHTML = "";
   [...new Set(alleAktiv().map(d => d.haendler).filter(Boolean))].sort((a, b) => a.localeCompare(b, "de")).forEach(h => { const o = document.createElement("option"); o.value = h; hl.appendChild(o); });
   const dl = $("#genreListe"); dl.innerHTML = "";
@@ -823,6 +836,13 @@ function baueFormular() {
     if (k === "zustand") { el.hidden = true; const ch = document.createElement("div"); ch.className = "chips"; ch.id = "zustandChips"; div.appendChild(ch); }
     sec.appendChild(div);
   }
+  const mk = neuerAbschnitt("details", "Marken");
+  mk.insertAdjacentHTML("beforeend", '<div class="full"><div class="chips" id="markenChips"></div>'
+    + '<div class="row" style="gap:8px"><input id="markeNeu" list="markenDatalist" placeholder="Marke eintippen, z. B. Signiert" autocomplete="off" style="flex:1 1 auto;min-width:0"><button type="button" id="markeAdd" class="primary" aria-label="Marke hinzufügen">+</button></div>'
+    + '<div class="chips" id="markenVorschlag" style="margin-top:6px"></div></div>');
+  const notizSec = [...grid.children].find(e => e.firstChild && e.firstChild.textContent === "Notizen"); if (notizSec) grid.insertBefore(mk, notizSec);
+  $("#markeAdd").onclick = () => markeHinzu($("#markeNeu").value);
+  $("#markeNeu").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); markeHinzu($("#markeNeu").value); } });
   const zd = $("#f_zustand").parentElement.parentElement;   // Bewertung im Abschnitt „Pressung & Zustand“, damit nichts wegscrollt
   zd.insertAdjacentHTML("beforeend", '<div class="full bewZeile"><label>Meine Bewertung</label><div class="sterneWahl" id="sterneWahl" role="group" aria-label="Bewertung"></div></div>');
   const kf = neuerAbschnitt("wert", "Kauf");
@@ -849,6 +869,21 @@ function dlgReiter(t) {
   document.querySelectorAll("#dtabs button").forEach(b => b.classList.toggle("on", b.dataset.t === t));
 }
 document.querySelectorAll("#dtabs button").forEach(b => b.onclick = () => dlgReiter(b.dataset.t));
+let formMarken = [];
+function markeHinzu(t) {
+  t = String(t || "").replace(/[,;]/g, " ").trim().replace(/\s+/g, " ");
+  if (t && !formMarken.some(m => m.toLowerCase() === t.toLowerCase())) formMarken.push(t.charAt(0).toUpperCase() + t.slice(1));
+  $("#markeNeu").value = ""; markenZeichnen();
+}
+function markenZeichnen() {
+  const box = $("#markenChips"); box.innerHTML = "";
+  formMarken.forEach(m => { const b = document.createElement("button"); b.type = "button"; b.className = "on"; b.textContent = m; b.title = "Entfernen";
+    b.onclick = () => { formMarken = formMarken.filter(x => x !== m); markenZeichnen(); }; box.appendChild(b); });
+  const vs = $("#markenVorschlag"); vs.innerHTML = "";
+  const benutzt = [...new Set(alleAktiv().flatMap(markenListe))];
+  [...new Set([...MARKEN_VORSCHLAG, ...benutzt])].filter(m => !formMarken.some(x => x.toLowerCase() === m.toLowerCase())).slice(0, 12).forEach(m => {
+    const b = document.createElement("button"); b.type = "button"; b.textContent = "+ " + m; b.onclick = () => markeHinzu(m); vs.appendChild(b); });
+}
 function zustandChips() {
   const sel = $("#f_zustand"), box = $("#zustandChips"); box.innerHTML = "";
   [...sel.options].filter(o => o.value).forEach(o => {
@@ -884,6 +919,7 @@ function oeffne(uid) {
   formWunsch = d ? d.wunsch === "1" : modus === "wunsch";
   $("#f_zielpreis").value = d ? d.zielpreis || "" : "";
   $("#f_kaufdatum").value = d ? d.kaufdatum || "" : ""; $("#f_haendler").value = d ? d.haendler || "" : "";
+  formMarken = d ? markenListe(d) : []; $("#markeNeu").value = ""; markenZeichnen();
   wunschZeigen();
   const zsel = $("#f_zustand");
   [...zsel.options].forEach(o => { if (o.value && !ZUSTAND.includes(o.value)) o.remove(); });   // unbekannter Altwert (z. B. selbst getippt) bleibt als Option erhalten, damit er beim Speichern nicht verloren geht
@@ -941,6 +977,8 @@ $("#form").addEventListener("submit", async e => {
   werte.bewertung = formBewertung ? String(formBewertung) : ""; werte.wunsch = formWunsch ? "1" : "";
   werte.zielpreis = formWunsch ? $("#f_zielpreis").value.trim() : "";
   werte.kaufdatum = /^\d{4}-\d{2}-\d{2}$/.test($("#f_kaufdatum").value) ? $("#f_kaufdatum").value : ""; werte.haendler = $("#f_haendler").value.trim();
+  if ($("#markeNeu").value.trim()) markeHinzu($("#markeNeu").value);
+  werte.marken = formMarken.join(", ");
   werte.cover_foto = formCover.foto; werte.cover_mbid = formCover.mbid; werte.discogs_id = formCover.discogs;
   const fehlt = FELDER.filter(([k]) => PFLICHT.includes(k) && !werte[k]).map(f => f[1]);
   if (fehlt.length) { dlgReiter("basis"); toast("Bitte ausfüllen: " + fehlt.join(", ")); return; }
@@ -997,6 +1035,7 @@ function zufallZiehen() {
   if (d.zustand) chips.append(el("span", "zchip", zustandNeu(d.zustand)));
   const sb = parseInt(d.bewertung, 10); if (sb >= 1 && sb <= 5) chips.append(el("span", "sterne", sterneText(sb)));
   if (d.marktwert) chips.append(el("span", "zchip", "≈ " + d.marktwert + " €"));
+  markenListe(d).forEach(x => chips.append(el("span", "mchip", x)));
   if (chips.children.length) box.append(chips);
   box.classList.remove("neu"); void box.offsetWidth; box.classList.add("neu");
   $("#zufallHinweis").textContent = pool.length + (pool.length === 1 ? " Platte" : " Platten") + " in der Auswahl";
@@ -1064,6 +1103,8 @@ function renderStatistik() {
     [...jahre.entries()].sort((a, b) => a[0].localeCompare(b[0])).forEach(([n, c]) => { const r = el("div", "balken"), b = el("i"); b.style.width = Math.max(4, c / hoechst * 100) + "%"; r.append(el("span", "", n), b, el("span", "n", String(c))); k.append(r); });
   }
   balken("Gekauft bei", zaehle(d => d.haendler), 6);
+  { const mm = new Map(); for (const d of S) for (const x of markenListe(d)) { const e = mm.get(x) || { n: 0, w: 0 }; e.n += stk(d); e.w += (zahlKurz(d.marktwert) || 0) * stk(d); mm.set(x, e); }
+    if (mm.size) { const k = karte("Marken"); [...mm.entries()].sort((a, b) => b[1].n - a[1].n).slice(0, 10).forEach(([n, e]) => { const r = el("div", "balken"); r.append(el("span", "", n), el("i"), el("span", "n", e.n + (e.w ? " · ≈ " + Math.round(e.w) + " €" : ""))); k.append(r); }); } }
   const ver = S.concat(W).filter(d => d.mw_alt && zahlKurz(d.marktwert) != null && zahlKurz(d.mw_alt) != null)
     .map(d => ({ d, delta: zahlKurz(d.marktwert) - zahlKurz(d.mw_alt) })).filter(x => Math.abs(x.delta) >= 0.01);
   if (ver.length) {
@@ -1123,6 +1164,7 @@ function baueFilter() {
 }
 $("#suche").addEventListener("input", render);
 document.querySelectorAll("[data-f]").forEach(el => el.addEventListener("input", render));
+$('[data-f="cover"]').addEventListener("input", e => { if (e.target.value === "ohne") coverPruefen(); });
 $("#reset").onclick = () => {
   $("#suche").value = ""; document.querySelectorAll("[data-f]").forEach(el => el.value = ""); render();
 };
@@ -1171,8 +1213,8 @@ function mergen(records) {
 }
 $("#csvExport").onclick = () => {
   const esc = v => '"' + String(v ?? "").replace(/"/g, '""') + '"';
-  const zeilen = [[...FELDER.map(f => f[1]), "Gekauft am", "Gekauft bei"].map(esc).join(";")];
-  gefiltert().sort(vergleich).forEach(d => zeilen.push([...KEYS.map(k => d[k]), d.kaufdatum, d.haendler].map(esc).join(";")));
+  const zeilen = [[...FELDER.map(f => f[1]), "Gekauft am", "Gekauft bei", "Marken"].map(esc).join(";")];
+  gefiltert().sort(vergleich).forEach(d => zeilen.push([...KEYS.map(k => d[k]), d.kaufdatum, d.haendler, d.marken].map(esc).join(";")));
   dateiAusgeben("plattenarchiv.csv", "﻿" + zeilen.join("\r\n"), "text/csv");
 };
 
@@ -2026,6 +2068,18 @@ $("#fotoWahl").onchange = async e => {
 
 // ---------- Cover ----------
 // Fremdcover kommen aus dem Cover Art Archive (anhand der MusicBrainz-ID), eigene Fotos als kleines Vorschaubild.
+let coverOk = {}; try { coverOk = JSON.parse(localStorage.getItem("plattenarchiv-covercheck") || "{}") || {}; } catch (e) {}
+let coverSpeichern = 0;
+const coverMerken = (id, ok) => { if (coverOk[id] === (ok ? 1 : 0)) return; coverOk[id] = ok ? 1 : 0; clearTimeout(coverSpeichern); coverSpeichern = setTimeout(() => { try { localStorage.setItem("plattenarchiv-covercheck", JSON.stringify(coverOk)); } catch (e) {} }, 800); };
+const hatCover = d => !!d.cover_foto || (!!d.cover_mbid && coverOk[d.cover_mbid] !== 0);
+async function coverPruefen() {   // prüft online, ob zu den gespeicherten Cover-IDs wirklich ein Bild existiert
+  const ids = [...new Set(alleAktiv().map(d => d.cover_mbid).filter(id => id && !prSchonDa(id)))];
+  let i = 0, geaendert = false;
+  const arbeiter = async () => { while (i < ids.length) { const id = ids[i++]; const ok = await new Promise(r => { const im = new Image(); im.onload = () => r(true); im.onerror = () => r(false); im.src = CAA(id); }); coverMerken(id, ok); if (!ok) geaendert = true; } };
+  await Promise.all([arbeiter(), arbeiter(), arbeiter(), arbeiter()]);
+  if (geaendert) render();
+}
+const prSchonDa = id => coverOk[id] !== undefined;
 const CAA = id => "https://coverartarchive.org/release-group/" + encodeURIComponent(id) + "/front-250";
 function coverElement(d) {
   const platzhalter = () => {
@@ -2038,7 +2092,8 @@ function coverElement(d) {
   if (!src) return platzhalter();
   const img = document.createElement("img");
   img.className = "cover"; img.alt = ""; img.loading = "lazy"; img.src = src;
-  img.onerror = () => img.replaceWith(platzhalter());   // z. B. offline oder kein Cover vorhanden
+  if (d.cover_mbid && !d.cover_foto) img.onload = () => coverMerken(d.cover_mbid, true);
+  img.onerror = () => { if (d.cover_mbid && !d.cover_foto) coverMerken(d.cover_mbid, false); img.replaceWith(platzhalter()); };   // z. B. offline oder kein Cover vorhanden
   return img;
 }
 function coverVorschau() {
