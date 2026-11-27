@@ -35,13 +35,13 @@
   .leiste {
     position: sticky; top: 0; z-index: 5; background: var(--bar);
     -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
-    padding: 10px 16px 8px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line);
+    padding: 10px 12px 8px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line);
   }
   .badge { display: inline-block; margin-left: 6px; padding: 1px 9px; border-radius: 999px; background: var(--accent);
     color: var(--accent-text); font-size: .72rem; font-weight: 700; vertical-align: middle; letter-spacing: .02em; }
   #frageKnoepfe button { width: 100%; }
   .leiste, #liste, .sortzeile { max-width: 860px; margin-left: auto; margin-right: auto; }
-  .sortzeile { padding: 0 16px 10px; }
+  .sortzeile { box-sizing: border-box; width: calc(100% - 24px); padding: 0 0 10px; }
   .sortzeile label { color: #d9d5d0; font-size: .85rem; text-shadow: 0 1px 3px #000; margin-bottom: 4px; }
   .sortsteuerung { display: flex; gap: 8px; }
   .sortsteuerung select { flex: 1 1 auto; min-width: 0; }
@@ -148,6 +148,8 @@
     background: var(--accent); color: var(--accent-text); padding: 8px 16px; font-weight: 600;
   }
   .karte .treffer-meta { color: var(--muted); font-size: .85rem; }
+  .toast.mitknopf { display: flex; align-items: center; gap: 12px; padding: 6px 8px 6px 16px; }
+  .toast.mitknopf button { background: var(--accent); color: var(--accent-text); border: 0; border-radius: 14px; padding: 6px 12px; font-weight: 600; white-space: nowrap; }
   .toast {
     position: fixed; left: 50%; transform: translateX(-50%); bottom: 90px; background: var(--text);
     color: var(--bg); padding: 10px 16px; border-radius: 20px; font-size: .9rem; z-index: 20;
@@ -194,11 +196,13 @@
   .zeile.minus span:last-child { color: #ff8f86; }
   .hinw { font-size: .85rem; color: var(--muted); margin: 6px 0 0; }
   #ansichtWechsel { font-size: 1.2rem; padding-left: 14px; padding-right: 14px; }
-  #liste.raster { grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 10px; }
+  #liste.raster { grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 10px; }
   #liste.raster .gruppe { grid-column: 1 / -1; }
   #liste.raster .karte { display: block; position: relative; padding: 0; overflow: hidden; aspect-ratio: 1; }
   #liste.raster .karte .cover { width: 100%; height: 100%; border-radius: 0; }
-  #liste.raster .karte div.cover { font-size: .8rem; line-height: 1.25; text-align: center; padding: 6px; overflow: hidden; flex-direction: column; word-break: break-word; }
+  #liste.raster .karte div.cover { font-size: .78rem; line-height: 1.2; text-align: center; padding: 6px 6px 22px; overflow: hidden; flex-direction: column; word-break: break-word; }
+  #liste.raster .rmarke { position: absolute; left: 0; right: 0; bottom: 0; display: flex; justify-content: space-between; gap: 4px; padding: 14px 5px 4px; font-size: .7rem; font-weight: 700; background: linear-gradient(transparent, rgba(8,7,13,.85)); }
+  #liste.raster .rmarke span:first-child { color: var(--stern); } #liste.raster .rmarke span:last-child { color: var(--wert); margin-left: auto; }
   #liste.raster .badge { position: absolute; top: 4px; right: 4px; font-size: .75rem; }
 
   /* ===== Design „Kompakt“ ===== */
@@ -274,12 +278,12 @@
   .chips button.on { border-color: var(--accent); background: rgba(182,85,216,.22); box-shadow: 0 0 10px rgba(182,85,216,.35); }
   #loeschen { padding: 10px 14px; }
   /* Sortierleiste im Stil der Liste */
-  .sortzeile { padding: 0 16px 10px; }
+  .sortzeile { box-sizing: border-box; width: calc(100% - 24px); padding: 0 0 10px; }
   .sortsteuerung { display: flex; align-items: center; gap: 4px; background: var(--seg-bg); border-radius: 12px; padding: 3px 3px 3px 14px; }
   .sortzeile label { margin: 0; color: var(--akz-hell); font-size: .74rem; letter-spacing: .14em; text-transform: uppercase; text-shadow: none; font-weight: 700; white-space: nowrap; }
   .sortsteuerung select { flex: 1 1 auto; min-width: 0; max-width: 190px; margin-left: auto; background-color: var(--seg-on); border: 0; border-radius: 9px; padding: 7px 10px; font-size: .9rem; font-weight: 600; color: #fff; }
   .sortsteuerung select option { background: #17142a; }
-  .sortsteuerung button { flex: none; background: transparent; border: 0; border-radius: 9px; width: 38px; height: 34px; padding: 0; font-size: 1.05rem; color: var(--muted); }
+  .sortsteuerung button { flex: none; background: transparent; border: 0; border-radius: 9px; width: 42px; height: 38px; padding: 0; font-size: 1.2rem; color: var(--text); }
   .sortsteuerung button:hover, .sortsteuerung button:active { background: var(--seg-on); color: #fff; }
   #ansichtWechsel { padding: 0; }
   #wolke { position: absolute; top: 12px; left: max(12px, env(safe-area-inset-left, 0px)); z-index: 6; width: 46px; height: 46px; padding: 0; border-radius: 50%; font-size: 1.5rem; line-height: 1;
@@ -454,7 +458,7 @@
   <div class="eseite" data-seite="ueber" hidden>
     <div class="ekarte">
       <b id="ueberZahlen"></b>
-      <span class="hinweis" id="ueberVersion" style="display:block;margin:2px 0 0">Version 41 (Genre-Leiste entfernt)</span>
+      <span class="hinweis" id="ueberVersion" style="display:block;margin:2px 0 0">Version 42 (Sammlung: Raster, Sortierung, Rückgängig)</span>
       <p class="hinweis">Die Daten liegen in diesem Browser und – wenn Google Drive verbunden ist – zusätzlich in deinem Drive. Mit „Sync-Datei exportieren“ kannst du jederzeit eine Sicherung ziehen.</p>
     </div>
   </div>
@@ -552,7 +556,7 @@ const FELDER = [
   ["land", "Land"], ["anzahl", "Anzahl"], ["preis", "EK-Preis (€)"], ["marktwert", "Marktwert (€, ca.)"], ["notizen", "Notizen"]
 ];   // „preis“ bleibt intern der Schlüssel für den EK-Preis, damit alte Einträge und Sync-Dateien passen
 const KEYS = FELDER.map(f => f[0]);
-const EXTRA = ["cover_mbid", "cover_foto", "discogs_id", "bewertung", "wunsch", "zielpreis", "mw_alt", "mw_datum"];   // werden nur mitgeführt und synchronisiert
+const EXTRA = ["cover_mbid", "cover_foto", "discogs_id", "bewertung", "wunsch", "zielpreis", "mw_alt", "mw_datum", "angelegt"];   // werden nur mitgeführt und synchronisiert
 const PFLICHT = ["band", "album", "genre"];
 const FORMATE = ["LP", "Doppel-LP", "EP", "Single 7\"", "Maxi 12\"", "Box-Set", "Sonstiges"];
 // Einfache Zustandsstufen. Alte Einträge mit Goldmine-Kürzeln (M, NM, VG+ …) bleiben unverändert gespeichert und werden nur umgedeutet angezeigt.
@@ -592,6 +596,13 @@ function toast(text) {
   const t = document.createElement("div"); t.className = "toast"; t.textContent = text;
   obersterContainer().appendChild(t); setTimeout(() => t.remove(), Math.max(4500, text.length * 60));
 }
+function toastRueckgaengig(text, zurueck) {
+  const t = document.createElement("div"); t.className = "toast mitknopf";
+  const sp = document.createElement("span"); sp.textContent = text;
+  const b = document.createElement("button"); b.type = "button"; b.textContent = "Rückgängig";
+  b.onclick = () => { t.remove(); zurueck(); };
+  t.append(sp, b); obersterContainer().appendChild(t); setTimeout(() => t.remove(), 8000);
+}
 let modus = "sammlung";   // "sammlung" | "wunsch" | "statistik"
 const alleAktiv = () => daten.filter(d => !d.geloescht);
 const sichtbar = () => alleAktiv().filter(d => (modus === "wunsch") === (d.wunsch === "1"));   // Statistik zählt zur Sammlung
@@ -627,6 +638,7 @@ function vergleich(a, b) {
     const rang = v => { const i = ZUSTAND.indexOf(zustandNeu(v)); return i < 0 ? 99 : i; };
     return rang(x) - rang(y);
   }
+  if (sortFeld === "angelegt" || sortFeld === "geaendert") return (parseInt(x, 10) || 0) - (parseInt(y, 10) || 0);   // ohne Datum (ältere Einträge) = ganz alt
   if (["jahr", "orig_jahr", "preis", "marktwert", "anzahl", "bewertung"].includes(sortFeld)) {
     const nx = parseFloat(String(x).replace(",", ".")), ny = parseFloat(String(y).replace(",", "."));
     if (isNaN(nx) && isNaN(ny)) return 0; if (isNaN(nx)) return 1; if (isNaN(ny)) return -1;
@@ -653,7 +665,7 @@ function render() {
       : modus === "wunsch" ? "Die Wunschliste ist leer – mit + eine Platte per Barcode oder von Hand hinzufügen." : "Noch keine Platten – mit + die erste anlegen.";
     liste.appendChild(p);
   }
-  const gruppieren = !["preis", "marktwert", "notizen", "katalognr", "barcode"].includes(sortFeld);
+  const gruppieren = !raster && !["preis", "marktwert", "notizen", "katalognr", "barcode", "angelegt", "geaendert"].includes(sortFeld);
   let letzteGruppe = null;
   if (!gruppieren && zeilen.length) ziel = neueBox();
   const besteStufe = Math.max(0, ...sichtbar().map(d => Math.min(5, parseInt(d.bewertung, 10) || 0)));   // über die ganze Liste, unabhängig von Filtern
@@ -672,7 +684,7 @@ function render() {
     }
     const k = document.createElement("div"); k.className = "karte mitbild" + (besteStufe >= 3 && parseInt(d.bewertung, 10) === besteStufe ? " top" : "");   // beste vergebene Bewertung (mind. 3 Sterne): ganzer Eintrag mit leuchtendem Rahmen
     const meta = [d.genre, d.orig_jahr && "Orig. " + d.orig_jahr, d.jahr && "Pressung " + d.jahr,
-      d.format].filter(Boolean).join(" · ");
+      d.format].filter(Boolean).map(t => t.replace(/ /g, "\u00a0").replace(/-/g, "\u2011")).join(" · ");   // Teile umbrechen nur zwischen den Angaben
     const band = document.createElement("b"); band.textContent = d.band;
     const stueck = parseInt(d.anzahl, 10) || 1;
     if (stueck > 1) { const bd = document.createElement("span"); bd.className = "badge"; bd.textContent = stueck + "×"; bd.title = stueck + "× vorhanden"; band.append(" ", bd); }
@@ -687,6 +699,10 @@ function render() {
       k.title = d.band + " – " + d.album;
       k.append(coverElement(d));
       if (stueck > 1) { const bd = document.createElement("span"); bd.className = "badge"; bd.textContent = stueck + "×"; k.append(bd); }
+      const sbr = parseInt(d.bewertung, 10), rm = document.createElement("div"); rm.className = "rmarke";
+      const l = document.createElement("span"); l.textContent = sbr >= 1 && sbr <= 5 ? "★ " + sbr : "";
+      const r = document.createElement("span"); r.textContent = d.marktwert ? "≈ " + d.marktwert + " €" : "";
+      if (l.textContent || r.textContent) { rm.append(l, r); k.append(rm); }
     } else {
       text.style.flex = "1 1 auto";
       const rechts = document.createElement("div"); rechts.className = "rechts";
@@ -896,15 +912,19 @@ $("#form").addEventListener("submit", async e => {
       }
       if (wahl !== 1) return;
     }
-    daten.push({ uid: neueUid(), geaendert: Date.now(), geloescht: false, ...werte });
+    daten.push({ uid: neueUid(), geaendert: Date.now(), geloescht: false, ...werte, angelegt: String(Date.now()) });
   } else Object.assign(daten.find(x => x.uid === aktuelleUid), werte, { geaendert: Date.now() });
   speichern(); render(); $("#dlg").close();
 });
 $("#abbrechen").onclick = () => $("#dlg").close();
 $("#loeschen").onclick = async () => {
   if (await frage("Diesen Eintrag wirklich löschen?", ["Löschen", "Abbrechen"]) !== 0) return;
-  Object.assign(daten.find(x => x.uid === aktuelleUid), { geloescht: true, geaendert: Date.now() });
+  const weg = daten.find(x => x.uid === aktuelleUid);
+  Object.assign(weg, { geloescht: true, geaendert: Date.now() });
   speichern(); $("#dlg").close(); render();
+  toastRueckgaengig("„" + weg.band + " – " + weg.album + "“ gelöscht", () => {
+    Object.assign(weg, { geloescht: false, geaendert: Date.now() }); speichern(); render(); toast("Wiederhergestellt.");
+  });
 };
 $("#neu").onclick = () => scanStart();   // Plus öffnet direkt den Barcode-Scan; „Von Hand eintragen“ führt zum Formular
 
@@ -973,12 +993,20 @@ function baueFilter() {
   FELDER.filter(f => f[0] !== "notizen").forEach(([k, n]) => {
     const o = document.createElement("option"); o.value = k; o.textContent = n; s.appendChild(o);
   });
-  { const o = document.createElement("option"); o.value = "bewertung"; o.textContent = "Bewertung"; s.appendChild(o); }
+  [["bewertung", "Bewertung"], ["angelegt", "Zuletzt hinzugefügt"], ["geaendert", "Zuletzt geändert"]].forEach(([v, t]) => {
+    const o = document.createElement("option"); o.value = v; o.textContent = t; s.appendChild(o);
+  });
   const bf = $('[data-f="bewertung"]');
   [["", "alle"], ["1", "ab 1 Stern"], ["2", "ab 2 Sternen"], ["3", "ab 3 Sternen"], ["4", "ab 4 Sternen"], ["5", "nur 5 Sterne"]].forEach(([v, t]) => {
     const o = document.createElement("option"); o.value = v; o.textContent = t; bf.appendChild(o);
   });
-  s.onchange = () => { sortFeld = s.value; render(); };
+  s.onchange = () => {
+    sortFeld = s.value;
+    if (sortFeld === "angelegt" || sortFeld === "geaendert") rueckwaerts = true;   // neueste zuerst
+    const t = $("#sortRichtung"); t.textContent = rueckwaerts ? "↓" : "↑"; t.title = rueckwaerts ? "Absteigend" : "Aufsteigend";
+    t.setAttribute("aria-label", rueckwaerts ? "Absteigend sortiert – tippen für aufsteigend" : "Aufsteigend sortiert – tippen für absteigend");
+    render();
+  };
   document.querySelectorAll("#modus button").forEach(b => b.onclick = () => { modus = b.dataset.m; render(); });
   const aw = $("#ansichtWechsel");
   const ansichtZeigen = () => { aw.textContent = raster ? "☰" : "▦"; aw.title = aw.ariaLabel = raster ? "Zur Listenansicht" : "Zur Bilderansicht"; };
