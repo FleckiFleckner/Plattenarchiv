@@ -275,6 +275,7 @@
   .mwzeile { display: flex; align-items: flex-end; gap: 8px; } .mwzeile input { flex: 1 1 auto; min-width: 0; }
   .mwklein { flex: none; width: 40px; height: 36px; padding: 0; font-size: 1.15rem; line-height: 1; }
   #zufallAlt { width: 18px; height: 18px; flex: none; padding: 0; margin: 0; accent-color: var(--akz-hell); }
+  .ico { vertical-align: -3px; margin-right: 2px; }
   .zbtns { justify-content: center; flex-wrap: nowrap; } .zbtns button { flex: 1 1 0; min-width: 0; padding: 10px 4px; white-space: nowrap; font-size: .85rem; } .zbtns button.primary { flex: 1.4 1 0; }
   #zufallGehoert { font-size: .8rem; margin: 6px 0 !important; }
   .hoerlabel { display: flex; gap: 8px; justify-content: center; align-items: center; font-size: .85rem; margin: 2px 0 10px; color: #d9d5d0; }
@@ -652,7 +653,7 @@
   <div class="eseite" data-seite="ueber" hidden>
     <div class="ekarte">
       <b id="ueberZahlen"></b>
-      <span class="hinweis" id="ueberVersion" style="display:block;margin:2px 0 0">Version 70 (Würfel kompakt)</span>
+      <span class="hinweis" id="ueberVersion" style="display:block;margin:2px 0 0">Version 71 (Cover lesen: Kamera & neues Symbol)</span>
       <div class="aktionen" style="margin:6px 0"><button type="button" id="hilfeAusEinst">? Was bedeutet was?</button></div>
       <p class="hinweis">Die Daten liegen in diesem Browser und – wenn Google Drive verbunden ist – zusätzlich in deinem Drive. Mit „Sync-Datei exportieren“ kannst du jederzeit eine Sicherung ziehen.</p>
     </div>
@@ -676,7 +677,7 @@
       <div class="aktionen suchzeile" data-tab="basis">
         <button type="button" id="btnScan">📷 Barcode</button>
         <button type="button" id="btnOnline">🔎 Online</button>
-        <button type="button" id="btnOcr" title="Cover fotografieren und Text lesen">🖼 Cover lesen</button>
+        <button type="button" id="btnOcr" title="Cover fotografieren und Text lesen"><svg class="ico" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8V6a2 2 0 0 1 2-2h2M16 4h2a2 2 0 0 1 2 2v2M20 16v2a2 2 0 0 1-2 2h-2M8 20H6a2 2 0 0 1-2-2v-2"/><path d="M8 10h8M8 14h5"/></svg> Cover lesen</button>
       </div>
       <div class="grid" id="formGrid"></div>
       <details class="info" data-tab="basis"><summary>ⓘ Woher kommen die Daten?</summary>
@@ -692,12 +693,14 @@
           <button type="button" id="coverWeg">Entfernen</button>
         </div>
         <input id="coverWahl" type="file" accept="image/*" hidden>
+        <input id="coverKamera" type="file" accept="image/*" capture="environment" hidden>
       </div>
       <div class="sec" data-tab="foto">
         <h4>Weitere Fotos</h4>
         <div class="full fchips" id="fotoArten"></div>
         <div class="full fgal" id="fotoGal"></div>
         <input id="galWahl" type="file" accept="image/*" multiple hidden>
+        <input id="galKamera" type="file" accept="image/*" capture="environment" hidden>
       </div>
     </div>
     <div class="aktionen untenleiste">
@@ -723,6 +726,7 @@
     </div>
   </div>
   <input id="ocrWahl" type="file" accept="image/*" hidden>
+  <input id="ocrKamera" type="file" accept="image/*" capture="environment" hidden>
 </dialog>
 <dialog id="zufallDlg">
   <div class="dkopf"><h2>Was höre ich heute?</h2><button type="button" id="zufallX" aria-label="Schließen">✕</button></div>
@@ -807,7 +811,7 @@
     <button type="button" id="fotoBtn" class="linkbtn">📷 Foto aufnehmen</button>
     <button type="button" id="scanManuell" class="linkbtn">✎ Von Hand eintragen</button>
   </div>
-  <div class="scanlinks" style="margin-top:0"><button type="button" id="scanOhneCode" class="linkbtn">🖼 Ohne Barcode: Cover fotografieren</button></div>
+  <div class="scanlinks" style="margin-top:0"><button type="button" id="scanOhneCode" class="linkbtn"><svg class="ico" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8V6a2 2 0 0 1 2-2h2M16 4h2a2 2 0 0 1 2 2v2M20 16v2a2 2 0 0 1-2 2h-2M8 20H6a2 2 0 0 1-2-2v-2"/><path d="M8 10h8M8 14h5"/></svg> Ohne Barcode: Cover fotografieren</button></div>
   <input id="fotoWahl" type="file" accept="image/*" capture="environment" hidden>
 </dialog>
 <dialog id="hilfeDlg">
@@ -969,10 +973,10 @@ async function fotoGalerie() {
     box.appendChild(b);
   }
   const neu = document.createElement("button"); neu.type = "button"; neu.className = "ft neu"; neu.textContent = "+"; neu.setAttribute("aria-label", "Foto hinzufügen");
-  neu.onclick = () => { $("#galWahl").value = ""; $("#galWahl").click(); };
+  neu.onclick = () => bildQuelle("Foto hinzufügen (" + fotoArt + ")", $("#galWahl"), $("#galKamera"));
   box.appendChild(neu);
 }
-$("#galWahl").onchange = async e => {
+$("#galWahl").onchange = $("#galKamera").onchange = async e => {
   const dateien = [...e.target.files]; if (!dateien.length) return;
   let n = 0;
   for (const f of dateien) { try { await fotoHinzu(f, fotoArt); n++; } catch (err) { toast("Foto konnte nicht gespeichert werden (Speicher voll oder Format?)."); } }
@@ -1349,7 +1353,7 @@ function fundZeigen() {
 }
 $("#form").addEventListener("input", fundZeigen);
 setInterval(() => { if ($("#dlg").open) fundZeigen(); }, 500);   // Scan/Online-Suche/Marktwert füllen Felder per Code
-$("#coverVorschau").onclick = () => $("#coverWahl").click();
+$("#coverVorschau").onclick = () => bildQuelle("Cover-Bild", $("#coverWahl"), $("#coverKamera"));
 $("#dlgX").onclick = () => $("#dlg").close();
 let formBewertung = 0, formWunsch = false;
 function sterneZeigen() { document.querySelectorAll("#sterneWahl button").forEach((b, i) => b.classList.toggle("an", i < formBewertung)); }
@@ -2558,11 +2562,16 @@ async function ocrStart(datei) {
     $("#ocrStatus").textContent = "Das habe ich gelesen – bitte prüfen:"; $("#ocrBody").hidden = false;
   } catch (e) { $("#ocrStatus").textContent = "Das hat nicht geklappt: " + e.message; $("#ocrBody").hidden = false; $("#ocrChips").replaceChildren(); }
 }
-function ocrOeffnen() { if (!$("#dlg").open) oeffne(null); $("#ocrWahl").value = ""; $("#ocrWahl").click(); }
+async function bildQuelle(titel, galerie, kamera) {   // Kamera oder Galerie: ein Feld mit capture würde nur die Kamera erlauben, eines ohne oft nur die Galerie
+  const w = await frage(titel, ["📷 Foto aufnehmen", "Aus der Galerie wählen", "Abbrechen"]);
+  const f = w === 0 ? kamera : w === 1 ? galerie : null; if (f) { f.value = ""; f.click(); }
+}
+function ocrQuelle() { return bildQuelle("Cover erfassen", $("#ocrWahl"), $("#ocrKamera")); }
+function ocrOeffnen() { if (!$("#dlg").open) oeffne(null); ocrQuelle(); }
 $("#btnOcr").onclick = ocrOeffnen;
 $("#scanOhneCode").onclick = () => { scanSchliessen(); ocrOeffnen(); };
-$("#ocrWahl").onchange = e => { const f = e.target.files && e.target.files[0]; if (f) ocrStart(f); };
-$("#ocrNeu").onclick = () => { $("#ocrWahl").value = ""; $("#ocrWahl").click(); };
+$("#ocrWahl").onchange = $("#ocrKamera").onchange = e => { const f = e.target.files && e.target.files[0]; if (f) ocrStart(f); };
+$("#ocrNeu").onclick = ocrQuelle;
 $("#ocrX").onclick = () => $("#ocrDlg").close();
 $("#ocrBand").onfocus = () => { ocrFeld = $("#ocrBand"); }; $("#ocrAlbum").onfocus = () => { ocrFeld = $("#ocrAlbum"); };
 $("#ocrSuchen").onclick = () => {
@@ -2866,8 +2875,8 @@ async function verkleinern(datei) {
   c.getContext("2d").drawImage(bmp, (bmp.width - s) / 2, (bmp.height - s) / 2, s, s, 0, 0, G, G);
   return c.toDataURL("image/jpeg", 0.65);
 }
-$("#coverFoto").onclick = () => $("#coverWahl").click();
-$("#coverWahl").onchange = async e => {
+$("#coverFoto").onclick = () => bildQuelle("Cover-Bild", $("#coverWahl"), $("#coverKamera"));
+$("#coverWahl").onchange = $("#coverKamera").onchange = async e => {
   const f = e.target.files[0]; e.target.value = ""; if (!f) return;
   try { formCover.foto = await verkleinern(f); coverVorschau(); }
   catch (err) { toast("Das Bild konnte nicht verarbeitet werden."); }
