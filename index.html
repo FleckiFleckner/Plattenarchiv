@@ -1494,8 +1494,21 @@ async function uebernehmen(r, code) {
   toast((r.genre ? "Daten eingetragen – bitte prüfen, Zustand und EK-Preis ergänzen." : "Daten eingetragen – Genre bitte selbst ergänzen.") +
     (mw.wert ? " Marktwert ca. " + mw.wert + " €." : " " + mw.fehler));
 }
+// Gültig = 8, 12, 13 oder 14 Ziffern mit richtiger Prüfziffer (EAN-8, UPC-A, EAN-13, ITF-14)
+function barcodeGueltig(c) {
+  if (!/^\d+$/.test(c) || ![8, 12, 13, 14].includes(c.length)) return false;
+  const d = [...c].map(Number), pr = d.pop();
+  const sum = d.reverse().reduce((a, x, i) => a + x * (i % 2 === 0 ? 3 : 1), 0);
+  return (10 - sum % 10) % 10 === pr;
+}
 async function sucheBarcode(code) {
   if (!/^\d{8,14}$/.test(code)) { toast("Das sieht nicht nach einem Barcode aus (8–14 Ziffern)."); return; }
+  if (!barcodeGueltig(code)) {
+    const w = await frage("Die Nummer " + code + " hat " + code.length + " Ziffern und keine gültige Prüfziffer. Echte Plattenbarcodes haben 12 oder 13 Ziffern – vermutlich fehlt eine Ziffer oder eine wurde falsch gelesen (oder es ist ein anderer Code, z. B. ein Händler-Aufkleber).",
+      ["Nummer prüfen / korrigieren", "Trotzdem suchen", "Abbrechen"]);
+    if (w === 0) { scanStart(); $("#codeEingabe").value = code; return; }
+    if (w !== 1) return;
+  }
   const gleichCode = d => ziffern(d.barcode) && ziffern(d.barcode) === ziffern(code);
   if (modus !== "wunsch") {
     const w = alleAktiv().find(d => d.wunsch === "1" && gleichCode(d));
@@ -1685,6 +1698,7 @@ function scanSchliessen() { scanStop(); if ($("#scanDlg").open) $("#scanDlg").cl
 function gefunden(code) {
   if (!scanAktiv) return;
   const nummer = String(code).replace(/\D/g, "");
+  if (!barcodeGueltig(nummer)) { $("#scanStatus").textContent = "Gelesen: " + nummer + " – das ist kein gültiger Plattenbarcode, ich suche weiter …"; return; }
   scanSchliessen();
   toast("Code erkannt: " + nummer);
   sucheBarcode(nummer);
